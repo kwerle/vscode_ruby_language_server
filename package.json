@@ -1,0 +1,55 @@
+{
+    "name": "vscode_ruby_language_server",
+    "displayName": "VSCode Ruby Language Server Client",
+    "description": "VSCode Language Server Client",
+    "license": "MIT",
+    "version": "0.0.1",
+    "publisher": "kwerle",
+    "engines": {
+        "vscode": "^1.41.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [
+        "onLanguage:ruby"
+    ],
+    "main": "./out/src/extension",
+    "scripts": {
+        "vscode:prepublish": "tsc -p ./",
+        "compile": "tsc -watch -p ./",
+        "postinstall": "node ./node_modules/vscode/bin/install",
+        "test": "node ./node_modules/vscode/bin/test"
+    },
+    "devDependencies": {
+        "@types/mocha": "^2.2.32",
+        "mocha": "^2.3.3",
+        "typescript": "^3.7.4"
+    },
+    "dependencies": {
+        "@types/vscode": "^1.41.0",
+        "mz": "^2.7.0",
+        "vsce": "^1.22.0",
+        "vscode-languageclient": "^5.2.1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/kwerle/vscode_ruby_language_server.git"
+    },
+    "bugs": {
+        "url": "https://github.com/kwerle/vscode_ruby_language_server/issues"
+    },
+    "contributes": {
+        "configuration": {
+            "type": "object",
+            "title": "VSCode Ruby Language Server Client",
+            "properties": {
+                "ruby-lsc.commandWithArgs": {
+                    "type": "array",
+                    "default": [],
+                    "description": "Command to run docker ruby language server"
+                }
+            }
+        }
+    }
+}
