@@ -1,4 +1,3 @@
 FROM node
 
-# RUN npm install -g vscode
-# RUN npm install -g typescript
+RUN yarn global add typescript
