@@ -14,6 +14,15 @@ This is alpha software.  I will be using it every day, so it ought to work.
 
 This started as a copy of https://github.com/mtsmfm/vscode-ruby-lsc .  Thanks to Fumiaki MATSUSHIMA for the work.  He deserves none of the blame.
 
+## Release instructions for myself
+
+From https://code.visualstudio.com/api/working-with-extensions/publishing-extension
+
+* merge to master
+* `make shell`
+* `npm install -g vsce`
+* `vsce publish -p <code>`
+
 ## License
 
 [MIT](https://opensource.org/licenses/MIT)
