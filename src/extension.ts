@@ -18,11 +18,10 @@ export async function activate(context: vscode.ExtensionContext) {
             await vscode.window.withProgress({title: "vscode_ruby_language_server", location: vscode.ProgressLocation.Window}, async progress => {
                 progress.report({message: `Pulling ${image}`});
 
-                // await execFile("docker", ["pull", image]);
+                await execFile("docker", ["pull", image]);
             });
 
             command = "docker";
-            // args = ["run", "--rm", "-i", "-e", "LOG_LEVEL=debug", "-v", `${vscode.workspace.rootPath}:${vscode.workspace.rootPath}`, image];
             args = ["run", "--rm", "-i", "-e", "LOG_LEVEL=debug", "-v", `${vscode.workspace.rootPath}:/project`, "-w", "/project", image];
         } catch (err) {
             if (err.code == "ENOENT") {
@@ -41,7 +40,7 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     }
     const clientOptions: LanguageClientOptions = {
-        documentSelector: ['ruby'],
+        documentSelector: ['ruby']
     };
     const executable: ServerOptions = {command, args};
     const disposable = new LanguageClient('Ruby Language Server', executable, clientOptions).start();
