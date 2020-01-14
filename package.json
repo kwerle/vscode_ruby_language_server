@@ -1,5 +1,5 @@
 {
-    "name": "vscode_ruby_language_server",
+    "name": "ruby-language-server",
     "displayName": "VSCode Ruby Language Server Client",
     "description": "VSCode Language Server Client",
     "license": "MIT",
