@@ -2,6 +2,12 @@
 **/*.ts
 **/*.map
 .gitignore
+Dockerfile
+docker-compose.yml
+.editorconfig
+Makefile
+test.rb
+vsc-extension-quickstart.md
 **/tsconfig.json
 **/tsconfig.base.json
 contributing.md
