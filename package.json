@@ -1,10 +1,10 @@
 {
     "name": "ruby-language-server",
-    "displayName": "VSCode Ruby Language Server Client",
-    "description": "VSCode Language Server Client",
+    "displayName": "Ruby Language Server Client",
+    "description": "Language Server Client",
     "license": "MIT",
     "version": "0.0.1",
-    "publisher": "kwerle",
+    "publisher": "KurtWerle",
     "engines": {
         "vscode": "^1.41.0"
     },
