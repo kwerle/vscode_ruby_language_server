@@ -43,12 +43,19 @@
     "contributes": {
         "configuration": {
             "type": "object",
-            "title": "VSCode Ruby Language Server Client",
+            "title": "Ruby Language Server",
             "properties": {
-                "ruby-lsc.commandWithArgs": {
-                    "type": "array",
-                    "default": [],
-                    "description": "Command to run docker ruby language server"
+                "ruby-language-server.additionalGems": {
+                  "type": "string",
+                  "scope": "user",
+                    "default": "",
+                    "description": "Comma separated list of additional gems to install - usually for rubocop.\nrubocop-rails,rubocop-performance..."
+                },
+                "ruby-language-server.dockerImage": {
+                  "type": "string",
+                  "scope": "user",
+                    "default": "kwerle/ruby_language_server",
+                    "description": "Name of the docker image to use for the server."
                 }
             }
         }
