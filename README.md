@@ -25,9 +25,10 @@ This plugin started as a copy of https://github.com/mtsmfm/vscode-ruby-lsc .  Th
 
 From https://code.visualstudio.com/api/working-with-extensions/publishing-extension
 
+* Bump version in [package.json](package.json)
+* Update [changelog](CHANGELOG.md)
 * merge to master
 * `make shell`
-* `npm install -g vsce`
 * `vsce publish -p <code>`
 
 ## License
