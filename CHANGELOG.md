@@ -1,5 +1,9 @@
 # Change Log
 
+#### 0.0.2 Wed Jan 15 22:09:03 PST 2020
+
+* Add configuration support for image name and additional gems
+
 #### 0.0.1 Mon Jan 13 23:19:27 PST 2020
 
 * Initial functionality
