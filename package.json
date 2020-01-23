@@ -3,7 +3,7 @@
     "displayName": "Ruby Language Server Client",
     "description": "Language Server Client",
     "license": "MIT",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "publisher": "KurtWerle",
     "engines": {
         "vscode": "^1.41.0"
@@ -46,14 +46,21 @@
             "title": "Ruby Language Server",
             "properties": {
                 "ruby-language-server.additionalGems": {
-                  "type": "string",
-                  "scope": "user",
+                    "type": "string",
+                    "scope": "user",
                     "default": "",
                     "description": "Comma separated list of additional gems to install - usually for rubocop.\nrubocop-rails,rubocop-performance..."
                 },
+                "ruby-language-server.logLevel": {
+                    "type": "string",
+                    "scope": "user",
+                    "enum": ["debug", "info", "warn", "error"],
+                    "default": "error",
+                    "description": "Generally only useful if you are debugging the server."
+                },
                 "ruby-language-server.dockerImage": {
-                  "type": "string",
-                  "scope": "user",
+                    "type": "string",
+                    "scope": "user",
                     "default": "kwerle/ruby_language_server",
                     "description": "Name of the docker image to use for the server."
                 }
