@@ -13,7 +13,8 @@ export async function activate(context: vscode.ExtensionContext) {
   const image = conf["dockerImage"] || defaultImage;
 
   command = "docker";
-  args = ["run", "--rm", "-i", "-e", "LOG_LEVEL=debug", "-v", `${vscode.workspace.rootPath}:/project`, "-w", "/project"];
+  let logLevel = conf["logLevel"];
+  args = ["run", "--rm", "-i", "-e", `LOG_LEVEL=${logLevel}`, "-v", `${vscode.workspace.rootPath}:/project`, "-w", "/project"];
   let additionalGems = conf["additionalGems"];
   if (additionalGems && additionalGems != "") {
     args.push("-e", `ADDITIONAL_GEMS=${additionalGems}`)
@@ -36,7 +37,7 @@ export async function activate(context: vscode.ExtensionContext) {
         await vscode.commands.executeCommand('workbench.action.openWorkspaceSettings');
       }
     } else {
-      vscode.window.showErrorMessage('Error execution Language Server via Docker: ' + err.message);
+      vscode.window.showErrorMessage('Error updating docker image - will try to use existing local one: ' + err.message);
       console.error(err);
     }
   }
