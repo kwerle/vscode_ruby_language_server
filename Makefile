@@ -10,6 +10,7 @@ package: image
 	docker-compose run app vsce package
 
 build:
+	docker build -t $(IMAGE_NAME) .
 	docker-compose build
 
 clean:
