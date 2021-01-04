@@ -1,5 +1,9 @@
 # Change Log
 
+#### 0.1.0 Sun Jan  3 21:04:52 PST 2021
+
+* Cope with slow docker launch
+
 #### 0.0.3 Wed Jan 22 22:22:35 PST 2020
 
 * Add support for log level
