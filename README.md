@@ -29,7 +29,11 @@ From https://code.visualstudio.com/api/working-with-extensions/publishing-extens
 * Update [changelog](CHANGELOG.md)
 * merge to master
 * `make shell`
+* `make package`
+Then
 * `vsce publish -p <code>`
+Or more likely
+* https://marketplace.visualstudio.com/manage and upload
 
 ## License
 
