@@ -1,20 +1,24 @@
+# EditorConfig is awesome: https://EditorConfig.org
+
+# This is the project's root directory
 root = true
 
 [*]
-end_of_line = lf
-insert_final_newline = false
+# Use spaces for indentation
 indent_style = space
+# Each indent should contain 2 spaces
 indent_size = 2
-trim_trailing_whitespace = true
-
-[*.json]
+# Use Unix line endings
 end_of_line = lf
-insert_final_newline = false
-indent_style = space
-indent_size = 4
+# The files are utf-8 encoded
+charset = utf-8
+# No whitespace at the end of line
 trim_trailing_whitespace = true
+# A file must end with an empty line - this is good for version control systems
+insert_final_newline = true
+# A line should not have more than this amount of chars (not supported by all plugins)
+max_line_length = 100
 
-# tabs 2 spaces for makefiles
 [Makefile]
+# Use tabs for indentation (Makefiles require tabs)
 indent_style = tab
-indent_size = 2
