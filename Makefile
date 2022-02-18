@@ -2,6 +2,15 @@
 
 IMAGE_NAME=vscode_ruby_language_server
 
+DEV_MOUNTS=$(PWD):/tmp/src -w /tmp/src
+
+build:
+	docker build -t $(IMAGE_NAME) .
+	docker-compose build
+
+clean:
+	rm -rf out/* node_modules/* node_modules/.yarn-integrity package-lock.json *.vsix
+
 image: build
 	docker-compose run app bash -c 'yarn install && tsc'
 
@@ -9,11 +18,8 @@ image: build
 package: image
 	docker-compose run app vsce package
 
-build:
-	docker-compose build
-
-clean:
-	rm -rf out/* node_modules/* node_modules/.yarn-integrity package-lock.json *.vsix
-
 shell: image
-	docker run --rm -it -v $(PWD):/tmp/src -w /tmp/src $(IMAGE_NAME) bash
+	docker run --rm -it -v $(DEV_MOUNTS) $(IMAGE_NAME) bash
+
+yarn_upgrade: image
+	docker run --rm -it -v $(DEV_MOUNTS) $(IMAGE_NAME) yarn upgrade
