@@ -1,5 +1,9 @@
 # Change Log
 
+#### 0.1.1 Thu Feb 17 22:03:43 PST 2022
+
+* Update node files (yarn upgrade)
+
 #### 0.1.0 Sun Jan  3 21:04:52 PST 2021
 
 * Cope with slow docker launch
