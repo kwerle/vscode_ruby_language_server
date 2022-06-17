@@ -15,7 +15,7 @@ You must have [docker](https://hub.docker.com/search/?type=edition&offering=comm
 
 ## Status
 
-The plugin is alpha software.  I will be using it every day, so it ought to work.  The language server I'd call... beta.
+The plugin is alpha software.  I use it every day, so it works as long as you have docker started before vscode.  The language server itself I'd call... beta.
 
 ## Credit
 
@@ -29,7 +29,11 @@ From https://code.visualstudio.com/api/working-with-extensions/publishing-extens
 * Update [changelog](CHANGELOG.md)
 * merge to master
 * `make shell`
+* `make package`
+Then
 * `vsce publish -p <code>`
+Or more likely
+* https://marketplace.visualstudio.com/manage and upload
 
 ## License
 
