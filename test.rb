@@ -13,4 +13,3 @@ end
 
 foo = Foo.new
 foo.foo_func
-
