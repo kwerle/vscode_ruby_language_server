@@ -1,5 +1,9 @@
 # Change Log
 
+#### 0.1.2 Tue Oct 25 19:53:55 PDT 2022
+
+* Update node files (yarn upgrade)
+
 #### 0.1.1 Thu Feb 17 22:03:43 PST 2022
 
 * Update node files (yarn upgrade)
