@@ -1,0 +1,6 @@
+{
+  "require": ["out/test/support/register.js"],
+  "spec": ["out/test/unit/**/*.test.js"],
+  "ui": "bdd",
+  "reporter": "spec"
+}
