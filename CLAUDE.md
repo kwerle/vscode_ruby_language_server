@@ -14,10 +14,12 @@ Git-flow:
 
 The supported environment is Docker (see the Makefile): `make image` installs dependencies and compiles, `make package` builds the `.vsix`, and `make shell` opens a shell in the build image. `yarn` isn't expected to be installed on the host.
 
+What ships is a single bundle, `dist/extension.js`, built by `scripts/bundle.js` (esbuild) with the runtime dependencies inlined. `.vscodeignore` excludes everything except the bundle, README, CHANGELOG and LICENSE, so new files stay out of the `.vsix` unless they're added there. `vscode:prepublish` type-checks and builds the minified production bundle. The bundler is `esbuild-wasm`, not `esbuild`, because `node_modules` is shared between the Linux build image and the host, and esbuild's native binary only works on the platform that installed it. Don't add dependencies with platform-specific binaries.
+
 Host-side, for debugging in VS Code:
 
-- `npm run compile` builds once into `out/`. `npm run watch` rebuilds on change.
-- F5 ("Launch Client") runs the `npm: watch` task and opens an Extension Development Host. `.vscode/settings.json` sets `npm.packageManager` to `npm` because yarn isn't on the host.
+- `npm run compile` type-checks, compiles to `out/` (used by tests), and builds the development bundle with a source map. `npm run watch` rebuilds the bundle on change; reload the test window to pick it up.
+- F5 ("Launch Client") runs the `npm: compile` task and opens an Extension Development Host. `.vscode/settings.json` sets `npm.packageManager` to `npm` because yarn isn't on the host.
 - The project pins TypeScript 3.9 (`node_modules/.bin/tsc`). VS Code's built-in TypeScript is newer and may check files with strict settings, so keep code valid under both (e.g. no type annotations on `catch` variables, which 3.9 doesn't support; cast instead).
 
 ## Architecture
