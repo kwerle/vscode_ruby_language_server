@@ -11,11 +11,11 @@
 
 ## Requirements
 
-You must have [docker](https://hub.docker.com/search/?type=edition&offering=community) installed (and running).  I hear you asking why.  Because I don't install a development environment any more - just docker.  And it takes care of all the requirements, consistency, etc.  No platform issues.  No library issues (other than what is brought with).
+You must have [docker](https://hub.docker.com/search/?type=edition&offering=community) installed (and running).  I hear you asking why.  Because I don't install a development environment any more - just docker.  And it takes care of all the requirements, consistency, etc.  No platform issues.  No library issues (other than what is brought with).  For example this requires sqlite with a plugin installed.  Who does that?  Docker.
 
 ## Status
 
-The plugin is alpha software.  I use it every day, so it works as long as you have docker started before vscode.  The language server itself I'd call... beta.
+I use this every day, so it works as long as you have docker started before vscode.
 
 ## Credit
 
