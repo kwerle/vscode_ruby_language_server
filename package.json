@@ -12,7 +12,8 @@
         "Other"
     ],
     "activationEvents": [
-        "onLanguage:ruby"
+        "onLanguage:ruby",
+        "onCommand:ruby-language-server.restart"
     ],
     "main": "./out/src/extension",
     "scripts": {
@@ -43,6 +44,13 @@
         "url": "https://github.com/kwerle/vscode_ruby_language_server/issues"
     },
     "contributes": {
+        "commands": [
+            {
+                "command": "ruby-language-server.restart",
+                "title": "Restart",
+                "category": "Ruby Language Server"
+            }
+        ],
         "configuration": {
             "type": "object",
             "title": "Ruby Language Server",
