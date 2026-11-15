@@ -22,9 +22,16 @@ Host-side, for debugging in VS Code:
 
 ## Architecture
 
-- `src/extension.ts`: activation and wiring only. Reads settings, creates the output channel, status bar item, `ServerContainer` and `LanguageClient`.
-- `src/serverContainer.ts`: `ServerContainer` runs one server container and returns a TCP socket to the client. `start()` is called again on each client restart and replaces the previous container; `dispose()` kills it and runs `docker rm -f`.
-- `src/docker.ts`: Docker CLI helpers (`pullImage`, `waitForDocker`, `removeContainer`).
+- `src/extension.ts`: activation, user-facing messages and wiring. `startServer()` waits for the Docker daemon (up to 2 minutes on first start, then offers Retry), pulls the image once in the background, and creates a new `ServerContainer` and `LanguageClient`. The `ruby-language-server.restart` command and the status bar click both call `startServer()`.
+- `src/serverContainer.ts`: `ServerContainer` runs one server container and returns a TCP socket to the client. `start()` is called again after every connection close and replaces the previous container; `dispose()` kills it and runs `docker rm -f`.
+- `src/statusBar.ts`: the status bar item (Waiting for Docker / Starting / Running / Stopped). `track()` is called again for each new client.
+- `src/docker.ts`: plain Docker CLI helpers (`daemonIsUp`, `waitForDaemon`, `refreshImage`, `removeContainer`). No VS Code UI here.
+
+Restart and retry design, shaped by `vscode-languageclient` 6:
+
+- The error handler's `closed()` is synchronous, so it can't check the daemon. It always returns `Restart`, and `ServerContainer.start()` does the waiting: it waits as long as it takes for the daemon and retries failed launches. It rejects only after 5 crashes in 3 minutes while the daemon was up. Failures while Docker is down don't count.
+- If a client's `start()` rejects, that client can never start again (it keeps the rejected connection). So Restart creates a new `LanguageClient` rather than reusing one. A `ServerContainer` disposed mid-start never settles its promise, so the discarded client doesn't show a spurious error.
+- Containers are named `ruby-language-server-<root hash>-<pid>` and labeled with both values. Before each start, containers for the same project root are removed if their pid label is this process or a dead one. Containers belonging to other live windows are left alone.
 
 Transport: the container gets `LSP_PORT=2087` (server v0.9.0+) and is published on `127.0.0.1:<free host port>`. Two server/Docker behaviours shape the connection code. Don't "simplify" them away:
 

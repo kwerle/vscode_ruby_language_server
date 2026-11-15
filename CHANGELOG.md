@@ -1,5 +1,12 @@
 # Change Log
 
+#### Unreleased
+
+* Talk to the language server over a TCP socket
+* Wait for Docker to start, and restart the server after Docker restarts, without reloading the window (#28)
+* Add a "Ruby Language Server: Restart" command; the status bar shows the server's state and restarts it when clicked
+* A failed image pull shows one warning and uses the local image
+
 #### 0.1.2 Tue Oct 25 19:53:55 PDT 2022
 
 * Update node files (yarn upgrade)

@@ -15,7 +15,7 @@ You must have [docker](https://hub.docker.com/search/?type=edition&offering=comm
 
 ## Status
 
-I use this every day, so it works as long as you have docker started before vscode.
+I use this every day.  If Docker isn't running yet, the extension waits for it, and it brings the server back if Docker restarts.  The status bar shows the server's state; click it (or run **Ruby Language Server: Restart**) to restart the server.
 
 ## Credit
 
