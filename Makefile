@@ -16,7 +16,7 @@ image: build
 
 # Used to make vsix file.  Useful for installing test/development builds locally.
 package: image
-	docker compose run app vsce package
+	docker compose run --rm app yarn vsce package
 
 shell: image
 	docker run --rm -it -v $(DEV_MOUNTS) $(IMAGE_NAME) bash
