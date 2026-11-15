@@ -1,4 +1,4 @@
-// A launch configuration that compiles the extension and then opens it inside a new window
+// A launch configuration that builds the extension and then opens it inside a new window
 {
 	"version": "0.2.0",
 	"configurations": [
@@ -9,8 +9,8 @@
 			"runtimeExecutable": "${execPath}",
 			"args": ["--extensionDevelopmentPath=${workspaceFolder}"],
 			"sourceMaps": true,
-			"outFiles": ["${workspaceFolder}/out/src/**/*.js"],
-			"preLaunchTask": "npm: watch"
+			"outFiles": ["${workspaceFolder}/dist/**/*.js"],
+			"preLaunchTask": "npm: compile"
 		}
 	]
 }
