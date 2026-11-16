@@ -2,9 +2,10 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			// Type-check, then bundle once.  F5 runs this before launching.
-			"type": "npm",
-			"script": "compile",
+			// Type-check, then bundle once, in the build image.  F5 runs this before launching.
+			"label": "compile",
+			"type": "shell",
+			"command": "make compile",
 			"group": {
 				"kind": "build",
 				"isDefault": true
@@ -18,9 +19,10 @@
 			]
 		},
 		{
-			// Rebuild the bundle on every change; reload the test window to pick it up.
-			"type": "npm",
-			"script": "watch",
+			// Rebuild the bundle on every change, in the build image; reload the test window to pick it up.
+			"label": "watch",
+			"type": "shell",
+			"command": "make watch",
 			"isBackground": true,
 			"group": "build",
 			"presentation": {

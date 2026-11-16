@@ -1,6 +1,9 @@
 # Common commands, run in the build image (see Dockerfile and docker-compose.yml).
-# The project directory is mounted at /app, so node_modules, out/ and dist/ are
-# shared with the host.
+# The project directory is mounted into the container, so node_modules, out/ and
+# dist/ are shared with the host.
+
+# The test service mounts the project at the same path as on the host.
+export PROJECT_DIR := $(CURDIR)
 
 build:
 	docker compose build
@@ -21,6 +24,30 @@ shell: image
 test: image
 	docker compose run --rm app npm test
 
+# Type-check and bundle, without reinstalling. F5 runs this (see .vscode/tasks.json).
+compile: build
+	docker compose run --rm app npm run compile
+
+# Rebuild the bundle on change (the "watch" task in .vscode/tasks.json).
+# Stopping the compose client doesn't stop the container it started, so the
+# container has a fixed name: removed when this stops, and before it starts in
+# case a previous run was killed.
+WATCH_CONTAINER := vscode-ruby-language-server-watch
+watch: build
+	@docker rm -f $(WATCH_CONTAINER) >/dev/null 2>&1 || true
+	trap 'docker rm -f $(WATCH_CONTAINER) >/dev/null 2>&1' EXIT HUP INT TERM; \
+	  docker compose run --rm --name $(WATCH_CONTAINER) app npm run watch
+
+# Against real Docker and the server image (RLS_TEST_IMAGE picks another).
+test_integration: image
+	docker compose build test
+	docker compose run --rm test npm run test:integration
+
+# A real VS Code under Xvfb. VSCODE_TEST_VERSION picks the version (default 1.82.0).
+test_e2e: image
+	docker compose build test
+	docker compose run --rm test xvfb-run -a npm run test:e2e
+
 lint: image
 	docker compose run --rm app npm run lint
 
@@ -34,4 +61,4 @@ run: build
 npm_update: image
 	docker compose run --rm app npm update
 
-.PHONY: build clean image lint package run shell test npm_update
+.PHONY: build clean compile image lint package run shell test test_e2e test_integration watch npm_update

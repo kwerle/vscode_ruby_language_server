@@ -8,32 +8,35 @@ Git-flow:
 
 - **`develop`**: new work is forked from `develop` on its own branch (e.g. `feature/<name>`), then merged back into `develop` by PR when it's done. Don't commit directly to `develop`.
 - **`master`**: released code only. It changes when we ship: a release is merged into `master` and tagged (e.g. `0.1.2`), then merged back into `develop`.
-- **Releases**: pushing a bare version tag (`0.2.0`, no `v`) on `master` runs `.github/workflows/release.yml`. It checks the tag against `package.json` and CHANGELOG.md (`scripts/check-release.js`, also `npm run release:check -- <version>`), runs `ci.yml` and `integration.yml` as reusable workflows, publishes the `.vsix` CI built to the Marketplace, and creates a GitHub release. The steps are in the README's "Releasing" section.
+- **Releases**: pushing a bare version tag (`0.2.0`, no `v`) on `master` runs `.github/workflows/release.yml`. It checks the tag against `package.json` and CHANGELOG.md (`scripts/check-release.js`, also `make run CMD="npm run release:check -- <version>"`), runs `ci.yml` and `integration.yml` as reusable workflows, publishes the `.vsix` CI built to the Marketplace, and creates a GitHub release. The steps are in the README's "Releasing" section.
 - Dependabot (`.github/dependabot.yml`): version updates for npm, GitHub Actions and the build image target `develop`. Security updates always target `master`; after merging one, bring `develop` up to date with `master`. Dependabot reads its config from `master`, so config changes take effect when they ship.
 
 ## Build and run
 
 The package manager is **npm**, and the lockfile is `package-lock.json`. Use `npm ci` to install exactly what's locked, and never add a `yarn.lock`. Docker is the reference environment (see the Makefile): `make image` installs dependencies and compiles, `make test` runs the unit tests, `make package` builds the `.vsix`, `make shell` opens a shell in the build image, and `make npm_update` updates within the ranges in `package.json`. The build image is pinned to the `node:24` LTS line.
 
-**Run npm, npx and node in the build image, never on the host.** Use the `make` targets (`make lint`, `make test`, `make package`), or `make run CMD="..."` for anything else (for example `make run CMD="npm run release:check -- 0.2.0"`). Host npm is a different version and rewrites `package-lock.json` (it drops the `libc` fields of optional platform packages), and installs on the host change the shared `node_modules`. The exceptions are the ones that can't run in the image yet:
+**Run npm, npx and node in Docker, never on the host.** Host npm is a different version and rewrites `package-lock.json` (it drops the `libc` fields of optional platform packages), and installs on the host change the shared `node_modules`. Everything has a `make` target:
 
-- the integration tests (`npm run test:integration`): they start real server containers, so they need the Docker CLI, the host's Docker socket, and the project at the same path as on the host
-- the end-to-end tests (`npm run test:e2e`): they also need a display for VS Code
-- F5 debugging: VS Code runs the `npm: compile` task on the host
+- `make lint`, `make test`, `make package`, `make compile` (type-check and bundle without reinstalling: run `make image` once first), `make watch`
+- `make test_integration` and `make test_e2e` (`VSCODE_TEST_VERSION=stable make test_e2e` for the current VS Code)
+- `make run CMD="..."` for anything else, e.g. `make run CMD="npm run release:check -- 0.2.0"`
 
-CI runs all of them. Run them on the host only when asked.
+Two compose services (`docker-compose.yml`, stages in `Dockerfile`):
 
-What ships is a single bundle, `dist/extension.js`, built by `scripts/bundle.js` (esbuild) with the runtime dependencies inlined. `.vscodeignore` excludes everything except the bundle, README, CHANGELOG and LICENSE, so new files stay out of the `.vsix` unless they're added there. `npm run package` builds the `.vsix`, and CI checks its contents with `scripts/check-package.js`. To ship a new file on purpose, add it to both `.vscodeignore` and the script's `EXPECTED` list. `vscode:prepublish` type-checks and builds the minified production bundle. The bundler is `esbuild-wasm`, not `esbuild`, because `node_modules` is shared between the Linux build image and the host, and esbuild's native binary only works on the platform that installed it. Don't add dependencies with platform-specific binaries.
+- `app` (stage `build`): Node only, project at `/app`.
+- `test` (stage `test`): adds the Docker CLI and Xvfb with Electron's libraries. It mounts the host's Docker socket, and mounts the project at its host path (`PROJECT_DIR`, set by the Makefile), because the server containers the tests start are created by the host's daemon, which resolves `--mount source=` on the host. It runs as root, so the e2e launcher adds `--no-sandbox` for root. Tests in it see the host's Docker, so the stale-container cleanup can't see host pids: it treats containers for the fixture project from host windows as stale.
 
-Host-side, for debugging in VS Code (when asked):
+What ships is a single bundle, `dist/extension.js`, built by `scripts/bundle.js` (esbuild) with the runtime dependencies inlined. `.vscodeignore` excludes everything except the bundle, README, CHANGELOG and LICENSE, so new files stay out of the `.vsix` unless they're added there. `make package` builds the `.vsix`, and CI checks its contents with `scripts/check-package.js`. To ship a new file on purpose, add it to both `.vscodeignore` and the script's `EXPECTED` list. `vscode:prepublish` type-checks and builds the minified production bundle. The bundler is `esbuild-wasm`, not `esbuild`, because `node_modules` is shared between the Linux build image and the host, and esbuild's native binary only works on the platform that installed it. Don't add dependencies with platform-specific binaries.
 
-- `npm run compile` type-checks, compiles to `out/` (used by tests), and builds the development bundle with a source map. `npm run watch` rebuilds the bundle on change; reload the test window to pick it up.
-- F5 ("Launch Client") runs the `npm: compile` task and opens an Extension Development Host.
+Debugging in VS Code:
+
+- `make compile` type-checks, compiles to `out/` (used by tests), and builds the development bundle with a source map. `make watch` rebuilds the bundle on change; reload the test window to pick it up. Its container has a fixed name and is removed when it stops.
+- F5 ("Launch Client") runs the `compile` task (`make compile`) and opens an Extension Development Host. The VS Code tasks run `make`, not npm, and `npm.autoDetect` is off so the npm scripts view doesn't offer host npm.
 - The minimum VS Code version is 1.82 (`engines.vscode`), which runs extensions on Node 18. Keep `@types/vscode` at the same version as the engine: newer types would allow APIs that 1.82 doesn't have, and `vsce` refuses to package that. TypeScript is 5.x with `strict` on.
 
 ## Style
 
-- `npm run lint` runs ESLint (`eslint.config.mjs`): the ESLint and typescript-eslint recommended rules, single quotes, and semicolons. CI fails on any finding. `npx eslint . --fix` fixes most of them.
+- `make lint` runs ESLint (`eslint.config.mjs`): the ESLint and typescript-eslint recommended rules, single quotes, and semicolons. CI fails on any finding. `make run CMD="npx eslint . --fix"` fixes most of them.
 - Indentation and whitespace come from `.editorconfig` (2 spaces; tabs in the Makefile).
 - Name unused parameters `_like_this`. Put the reason above any `eslint-disable-next-line`; unused disable comments are errors.
 
@@ -70,13 +73,13 @@ The server logs to stderr; those logs show up in the "Ruby Language Server" outp
 
 ## Testing
 
-`npm test` (or `make test` in Docker) compiles with `tsc` and runs the Mocha unit tests in `test/unit/` in plain Node. `.mocharc.json` loads `test/support/register.ts` first, which makes `require('vscode')` return the stub in `test/support/vscode.ts`. The stub fakes only what the code uses; when code under test needs more of the VS Code API, add it there. Its fakes record what was done to them (`window.statusBarItems`, `window.messages`, `commands.registered`), and `resetStub()` clears them between tests.
+`make test` (`npm test` in the build image) compiles with `tsc` and runs the Mocha unit tests in `test/unit/` in plain Node. `.mocharc.json` loads `test/support/register.ts` first, which makes `require('vscode')` return the stub in `test/support/vscode.ts`. The stub fakes only what the code uses; when code under test needs more of the VS Code API, add it there. Its fakes record what was done to them (`window.statusBarItems`, `window.messages`, `commands.registered`), and `resetStub()` clears them between tests.
 
 - Write tests in TypeScript under `test/unit/`, named `*.test.ts`, using Mocha's `describe`/`it` and Node's `assert`.
 - Keep unit tests free of Docker and the network. Logic that talks to Docker should take its command runner as a parameter, so tests can pass a fake.
-- Integration tests (`test/integration/`, `npm run test:integration`, needs Docker) run the real `ServerContainer` against real Docker and the server image, with a byte-accurate LSP client (`test/integration/lsp.ts`) and the fixture project in `test/fixtures/project/`. `RLS_TEST_IMAGE` picks another image, such as a local build of the server. CI runs them on PRs, on pushes, and daily against `latest` (`.github/workflows/integration.yml`). Tests that need a newer server check the image's version and skip with a message on older ones.
+- Integration tests (`test/integration/`, `make test_integration`) run the real `ServerContainer` against real Docker and the server image, with a byte-accurate LSP client (`test/integration/lsp.ts`) and the fixture project in `test/fixtures/project/`. `RLS_TEST_IMAGE` picks another image, such as a local build of the server. CI runs them on PRs, on pushes, and daily against `latest` (`.github/workflows/integration.yml`). Tests that need a newer server check the image's version and skip with a message on older ones.
 - The server only returns symbols for a file after `textDocument/didOpen`, as VS Code sends. Tests must open a file before asking about it.
-- End-to-end tests (`test/e2e/`, `npm run test:e2e`, needs Docker and a display) launch a real VS Code with the extension, using `@vscode/test-electron`, on the fixture project:
+- End-to-end tests (`test/e2e/`, `make test_e2e`, under Xvfb in the `test` image) launch a real VS Code with the extension, using `@vscode/test-electron`, on the fixture project:
   - activation, the status bar reaching Running, document symbols through VS Code, the Restart command, and recovery after the container is killed
   - `VSCODE_TEST_VERSION` picks the version. The default is 1.82.0, the minimum, and CI runs 1.82.0 and `stable` under `xvfb-run` in the Integration workflow.
   - The suite runs inside the extension host with Mocha 10 (`mocha-vscode-host`), because VS Code 1.82 runs extensions on Node 18 and Mocha 12 needs Node 20.19+.

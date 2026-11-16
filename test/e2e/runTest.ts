@@ -38,6 +38,9 @@ async function main() {
       '--disable-workspace-trust',
       '--skip-welcome',
       '--skip-release-notes',
+      // The test image (make test_e2e) runs as root, and Electron won't start
+      // as root with its sandbox on.
+      ...(process.getuid?.() === 0 ? ['--no-sandbox'] : []),
     ],
   });
 }
