@@ -1,20 +1,7 @@
-.vscode/**
-**/*.ts
-**/*.map
-.gitignore
-Dockerfile
-docker-compose.yml
-.editorconfig
-Makefile
-test.rb
-vsc-extension-quickstart.md
-**/tsconfig.json
-**/tsconfig.base.json
-contributing.md
-.travis.yml
-client/node_modules/**
-!client/node_modules/vscode-jsonrpc/**
-!client/node_modules/vscode-languageclient/**
-!client/node_modules/vscode-languageserver-protocol/**
-!client/node_modules/vscode-languageserver-types/**
-!client/node_modules/semver/**
+# Ship only the bundle and the docs. Everything else, including node_modules,
+# stays out of the .vsix: the bundle already contains the runtime dependencies.
+**
+!dist/extension.js
+!README.md
+!CHANGELOG.md
+!LICENSE.md

@@ -1,5 +1,2 @@
-FROM node
-
-RUN yarn global add typescript
-# RUN yarn global add vsce # Does not work for some reason.  js.  whatever.
-RUN npm install -g vsce
+# Pinned: node images after 24 no longer include yarn, which the build uses.
+FROM node:24

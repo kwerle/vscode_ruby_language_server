@@ -15,25 +15,25 @@
         "onLanguage:ruby",
         "onCommand:ruby-language-server.restart"
     ],
-    "main": "./out/src/extension",
+    "main": "./dist/extension.js",
     "scripts": {
-        "vscode:prepublish": "tsc -p ./",
-        "compile": "tsc -p ./",
-        "watch": "tsc -watch -p ./",
+        "vscode:prepublish": "tsc -p ./ --noEmit && node scripts/bundle.js --production",
+        "compile": "tsc -p ./ && node scripts/bundle.js",
+        "bundle": "node scripts/bundle.js",
+        "watch": "node scripts/bundle.js --watch",
         "postinstall": "#node ./node_modules/@types/vscode/bin/install",
-        "test": "node ./node_modules/vscode/bin/test"
+        "test": "tsc -p ./ && mocha"
     },
     "devDependencies": {
-        "@types/mocha": "^7.0.2",
+        "@types/mocha": "^10.0.10",
         "@types/node": "^14.18.63",
         "@types/vscode": "^1.41.0",
-        "mocha": "^7.1.1",
+        "@vscode/vsce": "^4.1.1",
+        "esbuild-wasm": "^0.28.2",
+        "mocha": "^12.0.3",
         "typescript": "^3.7.4"
     },
     "dependencies": {
-        "markdown-it": "^12.3.2",
-        "mz": "^2.7.0",
-        "vsce": "^1.22.0",
         "vscode-languageclient": "^6.1.3"
     },
     "repository": {
