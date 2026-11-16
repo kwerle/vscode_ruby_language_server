@@ -23,8 +23,11 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
-      # - the language client upgrade (#52)
+      # - vscode-languageclient 10+ needs a newer minimum VS Code (#49)
       - dependency-name: "vscode-languageclient"
+        update-types: ["version-update:semver-major"]
+      # - the end-to-end runner: Mocha 11+ needs a newer Node than VS Code 1.82's extension host
+      - dependency-name: "mocha-vscode-host"
         update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
