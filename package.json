@@ -21,6 +21,7 @@
         "compile": "tsc -p ./ && node scripts/bundle.js",
         "bundle": "node scripts/bundle.js",
         "watch": "node scripts/bundle.js --watch",
+        "package": "vsce package --no-dependencies --no-yarn",
         "postinstall": "#node ./node_modules/@types/vscode/bin/install",
         "test": "tsc -p ./ && mocha"
     },
