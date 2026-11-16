@@ -46,6 +46,7 @@ The server logs to stderr; those logs show up in the "Ruby Language Server" outp
 
 ## Security checks
 
+- `package.json` declares support for untrusted workspaces (Restricted Mode). That relies on every setting being `user` or `machine` scoped, so a workspace can't choose the image or how it runs. `test/unit/manifest.test.ts` enforces both. If the server ever starts running project code (for example, RuboCop with the project's config), revisit the declaration.
 - CI's "Build and test" job runs `scripts/audit.js`, which fails on high or critical advisories in the runtime dependencies (the ones inlined into the bundle). It reads `yarn audit --json`, because yarn's exit code doesn't follow `--level` reliably. Development-only advisories don't fail the build.
 - CodeQL (`.github/workflows/codeql.yml`) scans `src/`, `scripts/` and `test/` on PRs, on pushes to `develop` and `master`, and weekly.
 

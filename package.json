@@ -11,6 +11,16 @@
     "categories": [
         "Other"
     ],
+    "capabilities": {
+        "untrustedWorkspaces": {
+            "supported": true,
+            "description": "The language server only reads your code, in a container with no network access and the project mounted read-only. Its settings can only be changed in user settings, so a workspace can't change which server image runs."
+        },
+        "virtualWorkspaces": {
+            "supported": false,
+            "description": "The language server runs in Docker and needs the project's files on disk to mount."
+        }
+    },
     "activationEvents": [
         "onLanguage:ruby",
         "onCommand:ruby-language-server.restart"
