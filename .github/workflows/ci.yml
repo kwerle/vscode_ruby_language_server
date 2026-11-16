@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, master]
+  push:
+    branches: [develop, master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # This name is the required status check on develop and master.
+    name: Build and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Matches the build image (Dockerfile).
+          node-version: 24
+          cache: yarn
+
+      - name: Install
+        run: yarn install --frozen-lockfile
+
+      - name: Compile and bundle
+        run: yarn compile
+
+      - name: Unit tests
+        run: yarn test
+
+      # The project pins TypeScript 3.9; the editor's newer TypeScript checks
+      # with strict settings (see CLAUDE.md). Keep both passing until the
+      # toolchain upgrade (#49) makes strict the default.
+      - name: Type-check with strict TypeScript 5
+        run: npx --yes -p typescript@5.6.3 tsc -p . --noEmit --strict
