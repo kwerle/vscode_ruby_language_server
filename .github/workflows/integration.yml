@@ -37,16 +37,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: yarn
+          cache: npm
 
       - name: Install
-        run: yarn install --frozen-lockfile
+        run: npm ci
 
       - name: Pull the server image
         run: docker pull "$RLS_TEST_IMAGE"
 
       - name: Integration tests
-        run: yarn test:integration
+        run: npm run test:integration
 
   e2e:
     name: End-to-end tests (VS Code ${{ matrix.vscode }})
@@ -66,13 +66,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: yarn
+          cache: npm
 
       - name: Install
-        run: yarn install --frozen-lockfile
+        run: npm ci
 
       - name: Pull the server image
         run: docker pull "$RLS_TEST_IMAGE"
 
       - name: End-to-end tests
-        run: xvfb-run -a yarn test:e2e
+        run: xvfb-run -a npm run test:e2e

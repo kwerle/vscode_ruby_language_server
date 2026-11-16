@@ -32,7 +32,7 @@
         "bundle": "node scripts/bundle.js",
         "lint": "eslint .",
         "watch": "node scripts/bundle.js --watch",
-        "package": "vsce package --no-dependencies --no-yarn",
+        "package": "vsce package --no-dependencies",
         "test": "tsc -p ./ && mocha",
         "test:integration": "tsc -p ./ && mocha --config .mocharc.integration.json",
         "test:e2e": "npm run compile && node out/test/e2e/runTest.js"

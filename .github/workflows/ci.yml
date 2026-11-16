@@ -27,26 +27,26 @@ jobs:
         with:
           # Matches the build image (Dockerfile).
           node-version: 24
-          cache: yarn
+          cache: npm
 
       - name: Install
-        run: yarn install --frozen-lockfile
+        run: npm ci
 
       - name: Lint
-        run: yarn lint
+        run: npm run lint
 
       - name: Compile and bundle
-        run: yarn compile
+        run: npm run compile
 
       - name: Unit tests
-        run: yarn test
+        run: npm test
 
       # Runtime dependencies are inlined into the shipped bundle.
       - name: Audit runtime dependencies (fail on high or critical)
-        run: node scripts/audit.js --groups dependencies --level high
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Package
-        run: yarn package
+        run: npm run package
 
       - name: Check package contents
         run: node scripts/check-package.js

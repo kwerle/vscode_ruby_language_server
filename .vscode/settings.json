@@ -2,6 +2,5 @@
 	// Formatting comes from .editorconfig (2-space indents) and ESLint (npm run lint).
 	"typescript.tsc.autoDetect": "off",
 	"eslint.useFlatConfig": true,
-	// yarn isn't installed on the host; see CLAUDE.md.
 	"npm.packageManager": "npm"
 }

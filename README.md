@@ -39,7 +39,7 @@ From https://code.visualstudio.com/api/working-with-extensions/publishing-extens
 * `make shell`
 * `make package`
 Then
-* `yarn vsce publish -p <code>`
+* `npx vsce publish -p <code>`
 Or more likely
 * https://marketplace.visualstudio.com/manage and upload
 
