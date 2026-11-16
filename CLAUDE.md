@@ -13,11 +13,19 @@ Git-flow:
 
 ## Build and run
 
-The package manager is **npm**, and the lockfile is `package-lock.json`. Use `npm ci` to install exactly what's locked, and never add a `yarn.lock`. Docker is the reference environment (see the Makefile): `make image` installs dependencies and compiles, `make test` runs the unit tests, `make package` builds the `.vsix`, `make shell` opens a shell in the build image, and `make npm_update` updates within the ranges in `package.json`. The build image is pinned to the `node:24` LTS line. The same npm scripts also work on the host.
+The package manager is **npm**, and the lockfile is `package-lock.json`. Use `npm ci` to install exactly what's locked, and never add a `yarn.lock`. Docker is the reference environment (see the Makefile): `make image` installs dependencies and compiles, `make test` runs the unit tests, `make package` builds the `.vsix`, `make shell` opens a shell in the build image, and `make npm_update` updates within the ranges in `package.json`. The build image is pinned to the `node:24` LTS line.
+
+**Run npm, npx and node in the build image, never on the host.** Use the `make` targets (`make lint`, `make test`, `make package`), or `make run CMD="..."` for anything else (for example `make run CMD="npm run release:check -- 0.2.0"`). Host npm is a different version and rewrites `package-lock.json` (it drops the `libc` fields of optional platform packages), and installs on the host change the shared `node_modules`. The exceptions are the ones that can't run in the image yet:
+
+- the integration tests (`npm run test:integration`): they start real server containers, so they need the Docker CLI, the host's Docker socket, and the project at the same path as on the host
+- the end-to-end tests (`npm run test:e2e`): they also need a display for VS Code
+- F5 debugging: VS Code runs the `npm: compile` task on the host
+
+CI runs all of them. Run them on the host only when asked.
 
 What ships is a single bundle, `dist/extension.js`, built by `scripts/bundle.js` (esbuild) with the runtime dependencies inlined. `.vscodeignore` excludes everything except the bundle, README, CHANGELOG and LICENSE, so new files stay out of the `.vsix` unless they're added there. `npm run package` builds the `.vsix`, and CI checks its contents with `scripts/check-package.js`. To ship a new file on purpose, add it to both `.vscodeignore` and the script's `EXPECTED` list. `vscode:prepublish` type-checks and builds the minified production bundle. The bundler is `esbuild-wasm`, not `esbuild`, because `node_modules` is shared between the Linux build image and the host, and esbuild's native binary only works on the platform that installed it. Don't add dependencies with platform-specific binaries.
 
-Host-side, for debugging in VS Code:
+Host-side, for debugging in VS Code (when asked):
 
 - `npm run compile` type-checks, compiles to `out/` (used by tests), and builds the development bundle with a source map. `npm run watch` rebuilds the bundle on change; reload the test window to pick it up.
 - F5 ("Launch Client") runs the `npm: compile` task and opens an Extension Development Host.

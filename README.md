@@ -34,7 +34,7 @@ This plugin started as a copy of https://github.com/mtsmfm/vscode-ruby-lsc .  Th
 Releases are published by the Release workflow ([release.yml](.github/workflows/release.yml)) when a version tag is pushed on `master`.
 
 1. On a release branch from `develop`, bump `version` in [package.json](package.json) and rename `#### Unreleased` in [CHANGELOG.md](CHANGELOG.md) to `#### <version> <date>`.
-2. Check they agree: `npm run release:check -- <version>`.
+2. Check they agree: `make run CMD="npm run release:check -- <version>"`.
 3. Merge into `master` by PR, then merge `master` back into `develop`.
 4. Tag the merge commit on `master` with the bare version (`0.2.0`, no `v`) and push the tag: `git tag 0.2.0 origin/master && git push origin 0.2.0`.
 
