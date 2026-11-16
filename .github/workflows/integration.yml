@@ -1,0 +1,49 @@
+name: Integration
+
+# The real ServerContainer against real Docker and the server image's `latest`
+# tag. The daily run catches a server release that breaks the client even when
+# the client hasn't changed.
+
+on:
+  pull_request:
+    branches: [develop, master]
+  push:
+    branches: [develop, master]
+  schedule:
+    - cron: "23 7 * * *"
+  workflow_dispatch:
+    inputs:
+      image:
+        description: "Server image to test against"
+        default: "kwerle/ruby_language_server"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integration:
+    name: Integration tests (Docker)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RLS_TEST_IMAGE: ${{ github.event.inputs.image || 'kwerle/ruby_language_server' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: yarn
+
+      - name: Install
+        run: yarn install --frozen-lockfile
+
+      - name: Pull the server image
+        run: docker pull "$RLS_TEST_IMAGE"
+
+      - name: Integration tests
+        run: yarn test:integration

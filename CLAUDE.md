@@ -54,4 +54,6 @@ The server logs to stderr; those logs show up in the "Ruby Language Server" outp
 
 - Write tests in TypeScript under `test/unit/`, named `*.test.ts`, using Mocha's `describe`/`it` and Node's `assert`.
 - Keep unit tests free of Docker and the network. Logic that talks to Docker should take its command runner as a parameter, so tests can pass a fake.
+- Integration tests (`test/integration/`, `npm run test:integration`, needs Docker) run the real `ServerContainer` against real Docker and the server image, with a byte-accurate LSP client (`test/integration/lsp.ts`) and the fixture project in `test/fixtures/project/`. `RLS_TEST_IMAGE` picks another image, such as a local build of the server. CI runs them on PRs, on pushes, and daily against `latest` (`.github/workflows/integration.yml`). Tests that need a newer server check the image's version and skip with a message on older ones.
+- The server only returns symbols for a file after `textDocument/didOpen`, as VS Code sends. Tests must open a file before asking about it.
 - Some changes still need checking in VS Code: run them with F5 against a Ruby project.
