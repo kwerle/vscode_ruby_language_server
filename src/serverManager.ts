@@ -4,6 +4,7 @@ import {
   CloseAction, ErrorAction, ErrorHandler, LanguageClient, LanguageClientOptions, State, StreamInfo,
 } from 'vscode-languageclient/node';
 
+import { DevServerConnection, devPortFrom } from './devServer';
 import { daemonIsUp, DockerNotInstalledError, refreshImage, waitForDaemon, WaitForDaemonOptions } from './docker';
 import { ContainerStatus, ServerConfig, ServerContainer } from './serverContainer';
 import { checkServerVersion, ServerInfo } from './serverVersion';
@@ -37,6 +38,10 @@ export interface ManagerDeps {
   refreshImage: (image: string) => Promise<string | undefined>;
   projectRoot: () => string | undefined;
   readConfig: (root: string) => ServerConfig;
+  // Development only: connect to an already-running server on this port
+  // instead of starting a container (see devServer.ts).
+  devPort: number | undefined;
+  createDevConnection: (port: number, output: vscode.OutputChannel) => Container;
 }
 
 // ServerContainer.start() does all the waiting and retrying, so the client
@@ -77,6 +82,8 @@ const realDeps: ManagerDeps = {
   refreshImage: image => refreshImage(image),
   projectRoot: workspaceProjectRoot,
   readConfig: settings,
+  devPort: devPortFrom(process.env),
+  createDevConnection: (port, output) => new DevServerConnection(port, output),
 };
 
 // Owns the server's lifecycle: one LanguageClient and one ServerContainer at a
@@ -118,12 +125,18 @@ export class ServerManager implements vscode.Disposable {
     const config = this.deps.readConfig(root);
 
     this.statusBar.show('Starting');
-    if (!await this.dockerIsReady(myGeneration) || myGeneration !== this.generation) {
-      return;
+    const devPort = this.deps.devPort;
+    let container: Container;
+    if (devPort) {
+      this.output.appendLine(`Using the development server on port ${devPort}, not Docker.`);
+      container = this.deps.createDevConnection(devPort, this.output);
+    } else {
+      if (!await this.dockerIsReady(myGeneration) || myGeneration !== this.generation) {
+        return;
+      }
+      this.refreshImageOnce(config.image);
+      container = this.deps.createContainer(config, this.output);
     }
-    this.refreshImageOnce(config.image);
-
-    const container = this.deps.createContainer(config, this.output);
     const client = this.deps.createClient(() => container.start(), {
       documentSelector: [{ scheme: 'file', language: 'ruby' }],
       outputChannel: this.output,

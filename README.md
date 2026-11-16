@@ -29,6 +29,14 @@ The **Ruby Language Server** output shows which server version is running. If yo
 
 This plugin started as a copy of https://github.com/mtsmfm/vscode-ruby-lsc .  Thanks to Fumiaki MATSUSHIMA for the work.  He deserves none of the blame.
 
+## Debugging the server
+
+To debug the server's Ruby code with breakpoints, run "Debug server" in a
+[ruby_language_server](https://github.com/kwerle/ruby_language_server) checkout (see its README),
+then "Launch Client (debug server)" here. That configuration sets
+`RUBY_LANGUAGE_SERVER_DEV_PORT=7658`, so the client connects to that server over TCP instead of
+starting a container. It's for development only and isn't a setting.
+
 ## Releasing
 
 Releases are published by the Release workflow ([release.yml](.github/workflows/release.yml)) when a version tag is pushed on `master`.
