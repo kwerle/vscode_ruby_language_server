@@ -1,7 +1,6 @@
 {
-	"editor.insertSpaces": false,
-	"tslint.enable": true,
+	// Formatting comes from .editorconfig (2-space indents) and ESLint (npm run lint).
 	"typescript.tsc.autoDetect": "off",
-	"typescript.preferences.quoteStyle": "single",
+	"eslint.useFlatConfig": true,
 	"npm.packageManager": "npm"
 }

@@ -1,0 +1,7 @@
+{
+  "require": ["out/test/support/register.js"],
+  "spec": ["out/test/integration/**/*.test.js"],
+  "ui": "bdd",
+  "reporter": "spec",
+  "timeout": 180000
+}

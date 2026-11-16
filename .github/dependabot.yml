@@ -1,0 +1,50 @@
+# Dependabot version updates.
+#
+# Two GitHub rules to keep in mind:
+# - Dependabot reads this file from the default branch (master), so changes
+#   take effect once they ship, not when they merge into develop.
+# - target-branch applies to version updates only. Security updates always
+#   target master; after merging one, bring develop up to date with master.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # These follow deliberate upgrades, not Dependabot:
+      # - the minimum VS Code version and toolchain (#49)
+      - dependency-name: "@types/vscode"
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # - vscode-languageclient 10+ needs a newer minimum VS Code (#49)
+      - dependency-name: "vscode-languageclient"
+        update-types: ["version-update:semver-major"]
+      # - the end-to-end runner: Mocha 11+ needs a newer Node than VS Code 1.82's extension host
+      - dependency-name: "mocha-vscode-host"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+    ignore:
+      # Pinned to the node:24 LTS line (see Dockerfile); majors are a deliberate upgrade.
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]

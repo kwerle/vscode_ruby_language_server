@@ -2,32 +2,48 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
+			// Type-check, then bundle once.  F5 runs this before launching.
 			"type": "npm",
 			"script": "compile",
-			"group": "build",
-			"presentation": {
-				"panel": "dedicated",
-				"reveal": "never"
-			},
-			"problemMatcher": [
-				"$tsc"
-			]
-		},
-		{
-			"type": "npm",
-			"script": "watch",
-			"isBackground": true,
 			"group": {
 				"kind": "build",
 				"isDefault": true
 			},
 			"presentation": {
 				"panel": "dedicated",
-				"reveal": "never"
+				"reveal": "silent"
 			},
 			"problemMatcher": [
-				"$tsc-watch"
+				"$tsc"
 			]
+		},
+		{
+			// Rebuild the bundle on every change; reload the test window to pick it up.
+			"type": "npm",
+			"script": "watch",
+			"isBackground": true,
+			"group": "build",
+			"presentation": {
+				"panel": "dedicated",
+				"reveal": "never"
+			},
+			"problemMatcher": {
+				"owner": "esbuild",
+				"fileLocation": "relative",
+				"pattern": {
+					"regexp": "^(.*):(\\d+):(\\d+): (error|warning): (.*)$",
+					"file": 1,
+					"line": 2,
+					"column": 3,
+					"severity": 4,
+					"message": 5
+				},
+				"background": {
+					"activeBegins": true,
+					"beginsPattern": "^\\[watch\\] build started",
+					"endsPattern": "^\\[watch\\] build finished"
+				}
+			}
 		}
 	]
 }

@@ -1,25 +1,28 @@
-# I find it handy to have a makefile to run common commands
-
-IMAGE_NAME=vscode_ruby_language_server
-
-DEV_MOUNTS=$(PWD):/tmp/src -w /tmp/src
+# Common commands, run in the build image (see Dockerfile and docker-compose.yml).
+# The project directory is mounted at /app, so node_modules, out/ and dist/ are
+# shared with the host.
 
 build:
-	docker build -t $(IMAGE_NAME) .
 	docker compose build
 
 clean:
-	rm -rf out/* node_modules/* node_modules/.yarn-integrity package-lock.json *.vsix
+	rm -rf out dist node_modules .vscode-test *.vsix
 
 image: build
-	docker compose run app bash -c 'yarn install && tsc'
+	docker compose run --rm app bash -c 'npm ci && npm run compile'
 
-# Used to make vsix file.  Useful for installing test/development builds locally.
+# Build the .vsix. Useful for installing test/development builds locally.
 package: image
-	docker compose run app vsce package
+	docker compose run --rm app npm run package
 
 shell: image
-	docker run --rm -it -v $(DEV_MOUNTS) $(IMAGE_NAME) bash
+	docker compose run --rm app bash
 
-yarn_upgrade: image
-	docker run --rm -it -v $(DEV_MOUNTS) $(IMAGE_NAME) yarn upgrade
+test: image
+	docker compose run --rm app npm test
+
+# Update dependencies within their ranges in package.json (and package-lock.json).
+npm_update: image
+	docker compose run --rm app npm update
+
+.PHONY: build clean image package shell test npm_update

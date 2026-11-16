@@ -1,0 +1,77 @@
+# CLAUDE.md
+
+VS Code client for [ruby_language_server](https://github.com/kwerle/ruby_language_server). The extension doesn't contain a language server: it runs the server's Docker image (`kwerle/ruby_language_server` by default) and talks LSP to it.
+
+## Branches
+
+Git-flow:
+
+- **`develop`**: new work is forked from `develop` on its own branch (e.g. `feature/<name>`), then merged back into `develop` by PR when it's done. Don't commit directly to `develop`.
+- **`master`**: released code only. It changes when we ship: a release is merged into `master` and tagged (e.g. `0.1.2`), then merged back into `develop`.
+- **Releases**: pushing a bare version tag (`0.2.0`, no `v`) on `master` runs `.github/workflows/release.yml`. It checks the tag against `package.json` and CHANGELOG.md (`scripts/check-release.js`, also `npm run release:check -- <version>`), runs `ci.yml` and `integration.yml` as reusable workflows, publishes the `.vsix` CI built to the Marketplace, and creates a GitHub release. The steps are in the README's "Releasing" section.
+- Dependabot (`.github/dependabot.yml`): version updates for npm, GitHub Actions and the build image target `develop`. Security updates always target `master`; after merging one, bring `develop` up to date with `master`. Dependabot reads its config from `master`, so config changes take effect when they ship.
+
+## Build and run
+
+The package manager is **npm**, and the lockfile is `package-lock.json`. Use `npm ci` to install exactly what's locked, and never add a `yarn.lock`. Docker is the reference environment (see the Makefile): `make image` installs dependencies and compiles, `make test` runs the unit tests, `make package` builds the `.vsix`, `make shell` opens a shell in the build image, and `make npm_update` updates within the ranges in `package.json`. The build image is pinned to the `node:24` LTS line. The same npm scripts also work on the host.
+
+What ships is a single bundle, `dist/extension.js`, built by `scripts/bundle.js` (esbuild) with the runtime dependencies inlined. `.vscodeignore` excludes everything except the bundle, README, CHANGELOG and LICENSE, so new files stay out of the `.vsix` unless they're added there. `npm run package` builds the `.vsix`, and CI checks its contents with `scripts/check-package.js`. To ship a new file on purpose, add it to both `.vscodeignore` and the script's `EXPECTED` list. `vscode:prepublish` type-checks and builds the minified production bundle. The bundler is `esbuild-wasm`, not `esbuild`, because `node_modules` is shared between the Linux build image and the host, and esbuild's native binary only works on the platform that installed it. Don't add dependencies with platform-specific binaries.
+
+Host-side, for debugging in VS Code:
+
+- `npm run compile` type-checks, compiles to `out/` (used by tests), and builds the development bundle with a source map. `npm run watch` rebuilds the bundle on change; reload the test window to pick it up.
+- F5 ("Launch Client") runs the `npm: compile` task and opens an Extension Development Host.
+- The minimum VS Code version is 1.82 (`engines.vscode`), which runs extensions on Node 18. Keep `@types/vscode` at the same version as the engine: newer types would allow APIs that 1.82 doesn't have, and `vsce` refuses to package that. TypeScript is 5.x with `strict` on.
+
+## Style
+
+- `npm run lint` runs ESLint (`eslint.config.mjs`): the ESLint and typescript-eslint recommended rules, single quotes, and semicolons. CI fails on any finding. `npx eslint . --fix` fixes most of them.
+- Indentation and whitespace come from `.editorconfig` (2 spaces; tabs in the Makefile).
+- Name unused parameters `_like_this`. Put the reason above any `eslint-disable-next-line`; unused disable comments are errors.
+
+## Architecture
+
+- `src/extension.ts`: activation and wiring only: the output channel, status bar, `ServerManager`, and the `ruby-language-server.restart` command.
+- `src/serverManager.ts`: `ServerManager` owns the lifecycle, with one `LanguageClient` (vscode-languageclient 9, `vscode-languageclient/node`) and one `ServerContainer` at a time. `start()` starts or restarts: it waits for the Docker daemon (up to 2 minutes on first start, then offers Retry), pulls the image once per session in the background, creates a new container and client, and reports the server version. The Restart command, the status bar click and Retry all call it. Its Docker calls and its client and container creation come through `ManagerDeps`, so `test/unit/serverManager.test.ts` drives it with fakes.
+- `src/serverContainer.ts`: `ServerContainer` runs one server container and returns its stdin/stdout to the client. `start()` is called again after every connection close and replaces the previous container; `dispose()` kills it and runs `docker rm -f`. Everything it needs from Docker, the OS, the clock and timers comes through a `ContainerDeps` object (real by default). The unit tests drive it with a scripted fake Docker (`test/unit/serverContainer.test.ts`), so keep new Docker or process calls going through `ContainerDeps`. The pure parts (`dockerArgs`, `staleContainerIds`, `CrashBudget`, naming) are exported functions.
+- `src/serverVersion.ts`: decides what to log and warn about the server version from the `initialize` result's `serverInfo` (`MIN_SERVER_VERSION`). Raise `MIN_SERVER_VERSION` when the extension starts depending on newer server behavior. A server that reports no version only gets a log line, because servers before ruby_language_server#168 never report one.
+- `src/statusBar.ts`: the status bar item (Waiting for Docker / Starting / Running / Stopped). `track()` is called again for each new client.
+- `src/docker.ts`: plain Docker CLI helpers (`daemonIsUp`, `waitForDaemon`, `refreshImage`, `removeContainer`). No VS Code UI here.
+
+Restart and retry design, shaped by vscode-languageclient 9:
+
+- A client whose `start()` failed can't start again: it keeps the failed start (`$start` throws "Previous start failed"). So `ServerContainer.start()` does all the waiting and retrying and rejects only at the crash limit (5 crashes in 3 minutes while the daemon was up; failures while Docker is down don't count). The error handler's `closed()` always returns `{ action: Restart, handled: true }`. `handled` keeps v9 from showing a notification on every restart.
+- `stop()`, and so `restart()` (which is stop then start), throws unless the client is fully running. So Restart builds a new `LanguageClient` instead of calling `restart()`, and `ServerManager` only calls `stop()` on a running client. A client that's still starting is dropped by disposing its container, which leaves its `start()` pending forever rather than failing with a spurious error.
+- Containers are named `ruby-language-server-<root hash>-<pid>` and labeled with both values. Before each start, containers for the same project root are removed if their pid label is this process or a dead one. Containers belonging to other live windows are left alone.
+
+Transport: stdio. The container runs with `docker run -i` (never `-t`: a TTY rewrites line endings and corrupts the stream), and the client talks LSP over its stdin/stdout. Don't move this to TCP to fix garbled messages. LSP framing (`Content-Length` + JSON body) is the same over both, and the known cause of garbled messages is a server bug that breaks both: `Content-Length` counted characters, not bytes (ruby_language_server#167). Two rules follow from stdio:
+
+- The container runs with least privilege (`dockerArgs`): `--network none`, `--cap-drop ALL`, `--security-opt no-new-privileges`, `--pids-limit` and `--memory` limits, and the project mounted read-only with `--mount` (see `mountSpec`). Don't loosen these, or switch to `-v`, without a reason: the extension follows the image's `latest` tag, and these bound what a bad image could do. `-v` also breaks on paths containing `:`. `--read-only` for the container's own filesystem waits for ruby_language_server#169, since the server currently writes its database at `/`.
+- Nothing but the language client may read the container's stdout or write its stdin. `ServerContainer` only listens to stderr.
+- `start()` hands the streams to the client only once Docker reports the container running (`containerIsRunning`). The client sends `initialize` at once, and if the server dies during `initialize`, the client marks the start as failed and gives up instead of restarting. Failures before that point (daemon down, image can't be pulled) are retried inside `start()`.
+
+The server logs to stderr; those logs show up in the "Ruby Language Server" output channel.
+
+## Security checks
+
+- `package.json` declares support for untrusted workspaces (Restricted Mode). That relies on every setting being `user` or `machine` scoped, so a workspace can't choose the image or how it runs. `test/unit/manifest.test.ts` enforces both. If the server ever starts running project code (for example, RuboCop with the project's config), revisit the declaration.
+- CI's "Build and test" job runs `npm audit --omit=dev --audit-level=high`, which fails on high or critical advisories in the runtime dependencies (the ones inlined into the bundle). Development-only advisories don't fail the build.
+- Known development-only finding: `serialize-javascript` 6 (high) comes in through `mocha-vscode-host` (Mocha 10). It's only loaded by Mocha's parallel worker pool, which the end-to-end suite doesn't use. The fixed versions need Node 20, and VS Code 1.82's extension host runs Node 18, so an override would install a package that can't run there. It goes away when the minimum VS Code moves to one with Node 20 (1.90 or later) and the alias moves to a current Mocha.
+- Marketplace publishing uses Trusted Publishing (OIDC, `vsce publish --oidc`), with no stored token. The publisher's policy names this repo, `release.yml` and the `release` environment (which only release tags can use), so renaming the workflow or the environment breaks publishing until the policy is updated. Only the publish job has `id-token: write`, and it installs with `--ignore-scripts`. Actions in `release.yml` are pinned by commit SHA; keep it that way.
+- CodeQL (`.github/workflows/codeql.yml`) scans `src/`, `scripts/` and `test/` on PRs, on pushes to `develop` and `master`, and weekly.
+
+## Testing
+
+`npm test` (or `make test` in Docker) compiles with `tsc` and runs the Mocha unit tests in `test/unit/` in plain Node. `.mocharc.json` loads `test/support/register.ts` first, which makes `require('vscode')` return the stub in `test/support/vscode.ts`. The stub fakes only what the code uses; when code under test needs more of the VS Code API, add it there. Its fakes record what was done to them (`window.statusBarItems`, `window.messages`, `commands.registered`), and `resetStub()` clears them between tests.
+
+- Write tests in TypeScript under `test/unit/`, named `*.test.ts`, using Mocha's `describe`/`it` and Node's `assert`.
+- Keep unit tests free of Docker and the network. Logic that talks to Docker should take its command runner as a parameter, so tests can pass a fake.
+- Integration tests (`test/integration/`, `npm run test:integration`, needs Docker) run the real `ServerContainer` against real Docker and the server image, with a byte-accurate LSP client (`test/integration/lsp.ts`) and the fixture project in `test/fixtures/project/`. `RLS_TEST_IMAGE` picks another image, such as a local build of the server. CI runs them on PRs, on pushes, and daily against `latest` (`.github/workflows/integration.yml`). Tests that need a newer server check the image's version and skip with a message on older ones.
+- The server only returns symbols for a file after `textDocument/didOpen`, as VS Code sends. Tests must open a file before asking about it.
+- End-to-end tests (`test/e2e/`, `npm run test:e2e`, needs Docker and a display) launch a real VS Code with the extension, using `@vscode/test-electron`, on the fixture project:
+  - activation, the status bar reaching Running, document symbols through VS Code, the Restart command, and recovery after the container is killed
+  - `VSCODE_TEST_VERSION` picks the version. The default is 1.82.0, the minimum, and CI runs 1.82.0 and `stable` under `xvfb-run` in the Integration workflow.
+  - The suite runs inside the extension host with Mocha 10 (`mocha-vscode-host`), because VS Code 1.82 runs extensions on Node 18 and Mocha 12 needs Node 20.19+.
+  - `activate()` returns a small `TestApi` (status text) only for these tests.
+  - The launcher clears `ELECTRON_RUN_AS_NODE`. VS Code's own terminal sets it, and it would make the test VS Code start as plain Node.
+- Some changes still need checking by hand in VS Code: run them with F5 against a Ruby project.

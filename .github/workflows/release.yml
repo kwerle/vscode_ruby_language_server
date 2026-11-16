@@ -1,0 +1,111 @@
+name: Release
+
+# Publishes the extension when a version tag (X.Y.Z, no "v") is pushed on master:
+# checks that the tag, package.json and CHANGELOG.md agree, runs the CI build and
+# the Integration workflow, then publishes the .vsix that CI built and checked to
+# the VS Code Marketplace and attaches it to a GitHub release.
+#
+# Publishing uses Marketplace Trusted Publishing: there's no stored token. The
+# publish job asks GitHub for a short-lived OIDC token, and the Marketplace
+# exchanges it for a 15-minute credential, but only for this repo, this workflow
+# file and the `release` environment (which only release tags can use), as set in
+# the KurtWerle publisher's Trusted Publishing policy. Renaming this file or the
+# environment breaks publishing until the policy is updated.
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Check version and changelog
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check the tag matches package.json and CHANGELOG.md
+        run: node scripts/check-release.js "$GITHUB_REF_NAME"
+
+      - name: Check the tagged commit is on master
+        run: |
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
+            echo "::error::Tagged commit $GITHUB_SHA is not on master"
+            exit 1
+          fi
+
+  build:
+    needs: check
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yml
+
+  integration:
+    needs: check
+    permissions:
+      contents: read
+    uses: ./.github/workflows/integration.yml
+
+  marketplace:
+    name: Publish to the VS Code Marketplace
+    needs: [build, integration]
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write # Trusted Publishing
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      # Only for the locked vsce. No install scripts run in the job that can publish.
+      - name: Install
+        run: npm ci --ignore-scripts
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: vsix
+
+      - name: Publish
+        run: npx vsce publish --oidc --packagePath "ruby-language-server-$GITHUB_REF_NAME.vsix"
+
+  github-release:
+    name: Create the GitHub release
+    needs: marketplace
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Release notes from CHANGELOG.md
+        run: node scripts/check-release.js "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md"
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: vsix
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME" "ruby-language-server-$GITHUB_REF_NAME.vsix"
+          --verify-tag --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md"

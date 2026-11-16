@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, master]
+  push:
+    branches: [develop, master]
+  # Also run by the release workflow (release.yml) before it publishes.
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # This name is the required status check on develop and master.
+    name: Build and test
+    runs-on: ubuntu-latest
+    # A hung test (for example, a retry loop that never ends) fails fast instead of running for hours.
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Matches the build image (Dockerfile).
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Compile and bundle
+        run: npm run compile
+
+      - name: Unit tests
+        run: npm test
+
+      # Runtime dependencies are inlined into the shipped bundle.
+      - name: Audit runtime dependencies (fail on high or critical)
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Package
+        run: npm run package
+
+      - name: Check package contents
+        run: node scripts/check-package.js
+
+      - name: Upload the .vsix
+        uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: "*.vsix"
+          if-no-files-found: error

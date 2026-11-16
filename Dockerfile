@@ -1,5 +1,3 @@
-FROM node
-
-RUN yarn global add typescript
-# RUN yarn global add vsce # Does not work for some reason.  js.  whatever.
-RUN npm install -g vsce
+# The build image: Node and npm. Pinned to an LTS release so builds are
+# reproducible; Dependabot proposes minor updates within it.
+FROM node:24

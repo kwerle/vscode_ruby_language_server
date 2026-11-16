@@ -1,57 +1,37 @@
-'use strict';
-
 import * as vscode from 'vscode';
-import { LanguageClient, LanguageClientOptions, State } from 'vscode-languageclient';
 
-import { pullImage, waitForDocker } from './docker';
-import { ServerConfig, ServerContainer } from './serverContainer';
+import { ServerManager } from './serverManager';
+import { StatusBar } from './statusBar';
 
-let client: LanguageClient | undefined;
+const RESTART_COMMAND = 'ruby-language-server.restart';
 
-function readConfig(): ServerConfig {
-  const conf = vscode.workspace.getConfiguration("ruby-language-server");
-  return {
-    image: conf["dockerImage"] || "kwerle/ruby_language_server",
-    logLevel: conf["logLevel"],
-    additionalGems: conf["additionalGems"] || "",
-    projectRoot: vscode.workspace.rootPath || "",
-  };
+let manager: ServerManager | undefined;
+
+// Returned from activate() for the end-to-end tests (test/e2e), which can't
+// otherwise see the status bar.  Not a public API.
+export interface TestApi {
+  statusText(): string;
 }
 
-function createStatusBar(client: LanguageClient): vscode.Disposable {
-  const item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-  item.command = 'workbench.action.output.toggleOutput';
-  item.text = 'Ruby LSP: Starting';
-  item.show();
-  const labels: { [state: number]: string } = {
-    [State.Starting]: 'Ruby LSP: Starting',
-    [State.Running]: 'Ruby LSP: Running',
-    [State.Stopped]: 'Ruby LSP: Stopped',
-  };
-  const listener = client.onDidChangeState(event => { item.text = labels[event.newState]; });
-  return vscode.Disposable.from(listener, item);
-}
-
-export async function activate(context: vscode.ExtensionContext) {
-  const config = readConfig();
+export function activate(context: vscode.ExtensionContext): TestApi {
   const output = vscode.window.createOutputChannel('Ruby Language Server');
-  const container = new ServerContainer(config, output);
-
-  pullImage(config.image);
-  await waitForDocker();
-
-  const clientOptions: LanguageClientOptions = {
-    documentSelector: ['ruby'],
-    outputChannel: output
-  };
-  client = new LanguageClient('Ruby Language Server', () => container.start(), clientOptions);
-
-  context.subscriptions.push(output, container, createStatusBar(client), client.start());
+  const statusBar = new StatusBar(RESTART_COMMAND);
+  const serverManager = new ServerManager(output, statusBar);
+  manager = serverManager;
+  context.subscriptions.push(
+    output,
+    statusBar,
+    serverManager,
+    vscode.commands.registerCommand(RESTART_COMMAND, () => serverManager.start()),
+  );
+  // Don't hold up activation while waiting for Docker.
+  serverManager.start().catch(error => output.appendLine(`Failed to start: ${error}`));
+  return { statusText: () => statusBar.text };
 }
 
 export async function deactivate() {
-  if (client) {
-    await client.stop();
-    client = undefined;
+  if (manager) {
+    await manager.stop();
+    manager = undefined;
   }
 }
