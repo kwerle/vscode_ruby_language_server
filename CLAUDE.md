@@ -12,14 +12,14 @@ Git-flow:
 
 ## Build and run
 
-The supported environment is Docker (see the Makefile): `make image` installs dependencies and compiles, `make test` runs the tests, `make package` builds the `.vsix`, and `make shell` opens a shell in the build image. The build image is pinned to `node:24`, because later Node images no longer include yarn. `yarn` isn't expected to be installed on the host.
+The package manager is **npm**, and the lockfile is `package-lock.json`. Use `npm ci` to install exactly what's locked, and never add a `yarn.lock`. Docker is the reference environment (see the Makefile): `make image` installs dependencies and compiles, `make test` runs the unit tests, `make package` builds the `.vsix`, `make shell` opens a shell in the build image, and `make npm_update` updates within the ranges in `package.json`. The build image is pinned to the `node:24` LTS line. The same npm scripts also work on the host.
 
 What ships is a single bundle, `dist/extension.js`, built by `scripts/bundle.js` (esbuild) with the runtime dependencies inlined. `.vscodeignore` excludes everything except the bundle, README, CHANGELOG and LICENSE, so new files stay out of the `.vsix` unless they're added there. `npm run package` builds the `.vsix`, and CI checks its contents with `scripts/check-package.js`. To ship a new file on purpose, add it to both `.vscodeignore` and the script's `EXPECTED` list. `vscode:prepublish` type-checks and builds the minified production bundle. The bundler is `esbuild-wasm`, not `esbuild`, because `node_modules` is shared between the Linux build image and the host, and esbuild's native binary only works on the platform that installed it. Don't add dependencies with platform-specific binaries.
 
 Host-side, for debugging in VS Code:
 
 - `npm run compile` type-checks, compiles to `out/` (used by tests), and builds the development bundle with a source map. `npm run watch` rebuilds the bundle on change; reload the test window to pick it up.
-- F5 ("Launch Client") runs the `npm: compile` task and opens an Extension Development Host. `.vscode/settings.json` sets `npm.packageManager` to `npm` because yarn isn't on the host.
+- F5 ("Launch Client") runs the `npm: compile` task and opens an Extension Development Host.
 - The minimum VS Code version is 1.82 (`engines.vscode`), which runs extensions on Node 18. Keep `@types/vscode` at the same version as the engine: newer types would allow APIs that 1.82 doesn't have, and `vsce` refuses to package that. TypeScript is 5.x with `strict` on.
 
 ## Style
@@ -54,7 +54,8 @@ The server logs to stderr; those logs show up in the "Ruby Language Server" outp
 ## Security checks
 
 - `package.json` declares support for untrusted workspaces (Restricted Mode). That relies on every setting being `user` or `machine` scoped, so a workspace can't choose the image or how it runs. `test/unit/manifest.test.ts` enforces both. If the server ever starts running project code (for example, RuboCop with the project's config), revisit the declaration.
-- CI's "Build and test" job runs `scripts/audit.js`, which fails on high or critical advisories in the runtime dependencies (the ones inlined into the bundle). It reads `yarn audit --json`, because yarn's exit code doesn't follow `--level` reliably. Development-only advisories don't fail the build.
+- CI's "Build and test" job runs `npm audit --omit=dev --audit-level=high`, which fails on high or critical advisories in the runtime dependencies (the ones inlined into the bundle). Development-only advisories don't fail the build.
+- Known development-only finding: `serialize-javascript` 6 (high) comes in through `mocha-vscode-host` (Mocha 10). It's only loaded by Mocha's parallel worker pool, which the end-to-end suite doesn't use. The fixed versions need Node 20, and VS Code 1.82's extension host runs Node 18, so an override would install a package that can't run there. It goes away when the minimum VS Code moves to one with Node 20 (1.90 or later) and the alias moves to a current Mocha.
 - CodeQL (`.github/workflows/codeql.yml`) scans `src/`, `scripts/` and `test/` on PRs, on pushes to `develop` and `master`, and weekly.
 
 ## Testing

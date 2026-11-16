@@ -45,6 +45,6 @@ updates:
     schedule:
       interval: weekly
     ignore:
-      # Pinned to node:24: later images no longer include yarn (see Dockerfile).
+      # Pinned to the node:24 LTS line (see Dockerfile); majors are a deliberate upgrade.
       - dependency-name: "node"
         update-types: ["version-update:semver-major"]

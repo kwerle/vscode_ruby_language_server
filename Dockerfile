@@ -1,2 +1,3 @@
-# Pinned: node images after 24 no longer include yarn, which the build uses.
+# The build image: Node and npm. Pinned to an LTS release so builds are
+# reproducible; Dependabot proposes minor updates within it.
 FROM node:24
