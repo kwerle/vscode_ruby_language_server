@@ -37,6 +37,7 @@ Restart and retry design, shaped by `vscode-languageclient` 6:
 
 Transport: stdio. The container runs with `docker run -i` (never `-t`: a TTY rewrites line endings and corrupts the stream), and the client talks LSP over its stdin/stdout. Don't move this to TCP to fix garbled messages. LSP framing (`Content-Length` + JSON body) is the same over both, and the known cause of garbled messages is a server bug that breaks both: `Content-Length` counted characters, not bytes (ruby_language_server#167). Two rules follow from stdio:
 
+- The container runs with least privilege (`dockerArgs`): `--network none`, `--cap-drop ALL`, `--security-opt no-new-privileges`, `--pids-limit` and `--memory` limits, and the project mounted read-only with `--mount` (see `mountSpec`). Don't loosen these, or switch to `-v`, without a reason: the extension follows the image's `latest` tag, and these bound what a bad image could do. `-v` also breaks on paths containing `:`. `--read-only` for the container's own filesystem waits for ruby_language_server#169, since the server currently writes its database at `/`.
 - Nothing but the language client may read the container's stdout or write its stdin. `ServerContainer` only listens to stderr.
 - `start()` hands the streams to the client only once Docker reports the container running (`containerIsRunning`). The client sends `initialize` at once, and if the server dies during `initialize`, vscode-languageclient 6 gives up instead of restarting. Failures before that point (daemon down, image can't be pulled) are retried inside `start()`.
 

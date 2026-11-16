@@ -69,6 +69,22 @@ export function containerName(rootHash: string, pid: number): string {
   return `ruby-language-server-${rootHash}-${pid}`;
 }
 
+// Limits for the server container: generous enough for a large project's index,
+// but bounded, so a misbehaving image can't take the machine down.
+export const MEMORY_LIMIT = '2g';
+export const PIDS_LIMIT = '256';
+
+// `--mount` reads its value as CSV, so a path containing a comma or a quote
+// would change the spec.  Quote the field when needed, CSV style.
+function csvField(value: string): string {
+  return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
+
+// The project, mounted read-only: the server parses it and never writes to it.
+export function mountSpec(projectRoot: string): string {
+  return ['type=bind', csvField(`source=${projectRoot}`), 'target=/project', 'readonly'].join(',');
+}
+
 export function dockerArgs(config: ServerConfig, name: string, rootHash: string, pid: number): string[] {
   const { image, logLevel, additionalGems, projectRoot } = config;
   // -i without -t: a TTY would rewrite line endings and corrupt the LSP stream.
@@ -77,8 +93,16 @@ export function dockerArgs(config: ServerConfig, name: string, rootHash: string,
     "--name", name,
     "--label", `${LABEL_ROOT}=${rootHash}`,
     "--label", `${LABEL_PID}=${pid}`,
+    // Least privilege.  The server only parses code: it needs no network (the
+    // protocol is on stdin/stdout), no Linux capabilities and no privilege changes.
+    // Since the extension follows the image's `latest` tag, they also bound what a bad image could do.
+    "--network", "none",
+    "--cap-drop", "ALL",
+    "--security-opt", "no-new-privileges",
+    "--pids-limit", PIDS_LIMIT,
+    "--memory", MEMORY_LIMIT,
     "-e", `LOG_LEVEL=${logLevel}`,
-    "-v", `${projectRoot}:/project`,
+    "--mount", mountSpec(projectRoot),
     "-w", "/project",
   ];
   if (additionalGems) {
