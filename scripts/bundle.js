@@ -20,8 +20,8 @@ const options = {
   external: ['vscode'],
   format: 'cjs',
   platform: 'node',
-  // VS Code 1.41 (the minimum in package.json) runs extensions on Node 12.
-  target: 'node12',
+  // VS Code 1.82 (the minimum in package.json) runs extensions on Node 18.
+  target: 'node18',
   minify: production,
   sourcemap: !production,
   logLevel: 'silent',

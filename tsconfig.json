@@ -1,17 +1,18 @@
 {
     "compilerOptions": {
         "module": "commonjs",
-        "target": "es6",
+        // VS Code 1.82 (the minimum in package.json) runs extensions on Node 18.
+        "target": "es2022",
+        "lib": ["es2022"],
+        "strict": true,
         "outDir": "out",
-        "lib": [
-            "es6"
-        ],
         "sourceMap": true,
         "types": ["node", "mocha"],
         "rootDir": "."
     },
     "exclude": [
         "node_modules",
-        ".vscode-test"
+        ".vscode-test",
+        "dist"
     ]
 }
