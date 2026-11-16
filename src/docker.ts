@@ -1,5 +1,3 @@
-'use strict';
-
 import { promisify } from 'util';
 import * as childProcess from 'child_process';
 
@@ -37,7 +35,7 @@ export function delay(ms: number) {
 // The real DockerRunner.  Throws DockerNotInstalledError if there's no docker CLI.
 export async function docker(args: string[], options: { timeout?: number } = {}, exec: ExecFile = realExecFile): Promise<string> {
   try {
-    const { stdout } = await exec("docker", args, { timeout: options.timeout || 0 });
+    const { stdout } = await exec('docker', args, { timeout: options.timeout || 0 });
     return stdout;
   } catch (caught) {
     if ((caught as ExecError).code === 'ENOENT') {
@@ -50,7 +48,7 @@ export async function docker(args: string[], options: { timeout?: number } = {},
 // True if the daemon answers.  Throws DockerNotInstalledError if there's no docker CLI.
 export async function daemonIsUp(run: DockerRunner = docker): Promise<boolean> {
   try {
-    await run(["version", "--format", "{{.Server.Version}}"], { timeout: DAEMON_CHECK_TIMEOUT_MS });
+    await run(['version', '--format', '{{.Server.Version}}'], { timeout: DAEMON_CHECK_TIMEOUT_MS });
     return true;
   } catch (caught) {
     if (caught instanceof DockerNotInstalledError) {
@@ -91,7 +89,7 @@ export async function waitForDaemon(options: WaitForDaemonOptions = {}): Promise
 // error on failure, so the caller can report it and carry on with a local copy.
 export async function refreshImage(image: string, run: DockerRunner = docker): Promise<string | undefined> {
   try {
-    await run(["pull", image]);
+    await run(['pull', image]);
     return undefined;
   } catch (caught) {
     const err = caught as ExecError;
@@ -104,7 +102,7 @@ export async function refreshImage(image: string, run: DockerRunner = docker): P
 // doesn't exist yet (e.g. `docker run` is still pulling) or has stopped.
 export async function containerIsRunning(nameOrId: string, run: DockerRunner = docker): Promise<boolean> {
   try {
-    const state = await run(["inspect", "--format", "{{.State.Running}}", nameOrId]);
+    const state = await run(['inspect', '--format', '{{.State.Running}}', nameOrId]);
     return state.trim() === 'true';
   } catch (error) {
     return false;
@@ -113,7 +111,7 @@ export async function containerIsRunning(nameOrId: string, run: DockerRunner = d
 
 export async function removeContainer(nameOrId: string, run: DockerRunner = docker) {
   try {
-    await run(["rm", "-f", nameOrId]);
+    await run(['rm', '-f', nameOrId]);
   } catch (error) {
     // Already gone, or docker isn't reachable - nothing to clean up either way.
   }

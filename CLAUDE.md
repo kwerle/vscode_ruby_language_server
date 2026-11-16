@@ -22,6 +22,12 @@ Host-side, for debugging in VS Code:
 - F5 ("Launch Client") runs the `npm: compile` task and opens an Extension Development Host. `.vscode/settings.json` sets `npm.packageManager` to `npm` because yarn isn't on the host.
 - The minimum VS Code version is 1.82 (`engines.vscode`), which runs extensions on Node 18. Keep `@types/vscode` at the same version as the engine: newer types would allow APIs that 1.82 doesn't have, and `vsce` refuses to package that. TypeScript is 5.x with `strict` on.
 
+## Style
+
+- `npm run lint` runs ESLint (`eslint.config.mjs`): the ESLint and typescript-eslint recommended rules, single quotes, and semicolons. CI fails on any finding. `npx eslint . --fix` fixes most of them.
+- Indentation and whitespace come from `.editorconfig` (2 spaces; tabs in the Makefile).
+- Name unused parameters `_like_this`. Put the reason above any `eslint-disable-next-line`; unused disable comments are errors.
+
 ## Architecture
 
 - `src/extension.ts`: activation and wiring only: the output channel, status bar, `ServerManager`, and the `ruby-language-server.restart` command.

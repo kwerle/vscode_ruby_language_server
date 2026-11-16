@@ -2,8 +2,8 @@
 // return the stub in ./vscode, since the real module only exists inside VS Code.
 import * as vscodeStub from './vscode';
 
-// Module._load isn't in Node's type definitions.
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// Module._load isn't in Node's type definitions, so it's loaded untyped.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const Module = require('module');
 const originalLoad = Module._load;
 

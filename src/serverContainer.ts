@@ -1,5 +1,3 @@
-'use strict';
-
 import * as vscode from 'vscode';
 import * as crypto from 'crypto';
 import { spawn, ChildProcess, SpawnOptions } from 'child_process';
@@ -89,24 +87,24 @@ export function dockerArgs(config: ServerConfig, name: string, rootHash: string,
   const { image, logLevel, additionalGems, projectRoot } = config;
   // -i without -t: a TTY would rewrite line endings and corrupt the LSP stream.
   const args = [
-    "run", "--rm", "-i",
-    "--name", name,
-    "--label", `${LABEL_ROOT}=${rootHash}`,
-    "--label", `${LABEL_PID}=${pid}`,
+    'run', '--rm', '-i',
+    '--name', name,
+    '--label', `${LABEL_ROOT}=${rootHash}`,
+    '--label', `${LABEL_PID}=${pid}`,
     // Least privilege.  The server only parses code: it needs no network (the
     // protocol is on stdin/stdout), no Linux capabilities and no privilege changes.
     // Since the extension follows the image's `latest` tag, they also bound what a bad image could do.
-    "--network", "none",
-    "--cap-drop", "ALL",
-    "--security-opt", "no-new-privileges",
-    "--pids-limit", PIDS_LIMIT,
-    "--memory", MEMORY_LIMIT,
-    "-e", `LOG_LEVEL=${logLevel}`,
-    "--mount", mountSpec(projectRoot),
-    "-w", "/project",
+    '--network', 'none',
+    '--cap-drop', 'ALL',
+    '--security-opt', 'no-new-privileges',
+    '--pids-limit', PIDS_LIMIT,
+    '--memory', MEMORY_LIMIT,
+    '-e', `LOG_LEVEL=${logLevel}`,
+    '--mount', mountSpec(projectRoot),
+    '-w', '/project',
   ];
   if (additionalGems) {
-    args.push("-e", `ADDITIONAL_GEMS=${additionalGems}`);
+    args.push('-e', `ADDITIONAL_GEMS=${additionalGems}`);
   }
   args.push(image);
   return args;
@@ -270,9 +268,9 @@ export class ServerContainer implements vscode.Disposable {
 
   private async removeStaleContainers() {
     const listing = await this.deps.docker([
-      "ps", "-a",
-      "--filter", `label=${LABEL_ROOT}=${this.rootHash}`,
-      "--format", `{{.ID}} {{.Label "${LABEL_PID}"}}`,
+      'ps', '-a',
+      '--filter', `label=${LABEL_ROOT}=${this.rootHash}`,
+      '--format', `{{.ID}} {{.Label "${LABEL_PID}"}}`,
     ]);
     for (const id of staleContainerIds(listing, this.deps.pid, this.deps.isAlive)) {
       this.output.appendLine(`Removing stale container ${id}`);
@@ -285,7 +283,7 @@ export class ServerContainer implements vscode.Disposable {
     this.stderrTail = '';
     // stdin/stdout carry the protocol and belong to the language client; only stderr is ours.
     const args = dockerArgs(this.config, name, this.rootHash, this.deps.pid);
-    const child = this.deps.spawn("docker", args, { stdio: ['pipe', 'pipe', 'pipe'] });
+    const child = this.deps.spawn('docker', args, { stdio: ['pipe', 'pipe', 'pipe'] });
     child.stderr!.on('data', (data: Buffer) => {
       const text = data.toString();
       this.stderrTail = (this.stderrTail + text).slice(-2000);
