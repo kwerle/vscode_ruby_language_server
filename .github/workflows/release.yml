@@ -5,8 +5,12 @@ name: Release
 # the Integration workflow, then publishes the .vsix that CI built and checked to
 # the VS Code Marketplace and attaches it to a GitHub release.
 #
-# The Marketplace token (VSCE_PAT) lives in the `release` environment, which
-# only release tags can use, and only the publish job sees it.
+# Publishing uses Marketplace Trusted Publishing: there's no stored token. The
+# publish job asks GitHub for a short-lived OIDC token, and the Marketplace
+# exchanges it for a 15-minute credential, but only for this repo, this workflow
+# file and the `release` environment (which only release tags can use), as set in
+# the KurtWerle publisher's Trusted Publishing policy. Renaming this file or the
+# environment breaks publishing until the policy is updated.
 
 on:
   push:
@@ -60,6 +64,7 @@ jobs:
     environment: release
     permissions:
       contents: read
+      id-token: write # Trusted Publishing
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -69,7 +74,7 @@ jobs:
         with:
           node-version: 24
 
-      # Only for the locked vsce. No install scripts run in the job that has the token.
+      # Only for the locked vsce. No install scripts run in the job that can publish.
       - name: Install
         run: npm ci --ignore-scripts
 
@@ -77,11 +82,8 @@ jobs:
         with:
           name: vsix
 
-      # vsce reads the token from VSCE_PAT.
       - name: Publish
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: npx vsce publish --packagePath "ruby-language-server-$GITHUB_REF_NAME.vsix"
+        run: npx vsce publish --oidc --packagePath "ruby-language-server-$GITHUB_REF_NAME.vsix"
 
   github-release:
     name: Create the GitHub release
