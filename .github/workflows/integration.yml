@@ -11,6 +11,8 @@ on:
     branches: [develop, master]
   schedule:
     - cron: "23 7 * * *"
+  # Also run by the release workflow (release.yml) before it publishes.
+  workflow_call:
   workflow_dispatch:
     inputs:
       image:
