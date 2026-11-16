@@ -25,7 +25,7 @@ Host-side, for debugging in VS Code:
 ## Architecture
 
 - `src/extension.ts`: activation, user-facing messages and wiring. `startServer()` waits for the Docker daemon (up to 2 minutes on first start, then offers Retry), pulls the image once in the background, and creates a new `ServerContainer` and `LanguageClient`. The `ruby-language-server.restart` command and the status bar click both call `startServer()`.
-- `src/serverContainer.ts`: `ServerContainer` runs one server container and returns its stdin/stdout to the client. `start()` is called again after every connection close and replaces the previous container; `dispose()` kills it and runs `docker rm -f`.
+- `src/serverContainer.ts`: `ServerContainer` runs one server container and returns its stdin/stdout to the client. `start()` is called again after every connection close and replaces the previous container; `dispose()` kills it and runs `docker rm -f`. Everything it needs from Docker, the OS, the clock and timers comes through a `ContainerDeps` object (real by default). The unit tests drive it with a scripted fake Docker (`test/unit/serverContainer.test.ts`), so keep new Docker or process calls going through `ContainerDeps`. The pure parts (`dockerArgs`, `staleContainerIds`, `CrashBudget`, naming) are exported functions.
 - `src/statusBar.ts`: the status bar item (Waiting for Docker / Starting / Running / Stopped). `track()` is called again for each new client.
 - `src/docker.ts`: plain Docker CLI helpers (`daemonIsUp`, `waitForDaemon`, `refreshImage`, `removeContainer`). No VS Code UI here.
 

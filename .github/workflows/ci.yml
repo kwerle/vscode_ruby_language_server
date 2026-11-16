@@ -18,6 +18,8 @@ jobs:
     # This name is the required status check on develop and master.
     name: Build and test
     runs-on: ubuntu-latest
+    # A hung test (for example, a retry loop that never ends) fails fast instead of running for hours.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 

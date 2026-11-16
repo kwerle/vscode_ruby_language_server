@@ -3,8 +3,6 @@
 import { promisify } from 'util';
 import * as childProcess from 'child_process';
 
-const execFile = promisify(childProcess.execFile);
-
 // How often to ask whether the Docker daemon is up.
 const DAEMON_POLL_MS = 2000;
 // A daemon that's up answers `docker version` in well under this.
@@ -23,14 +21,23 @@ export class DockerNotInstalledError extends Error {
   }
 }
 
+// Runs `docker <args>` and resolves with its stdout.  The helpers below take
+// one as their last parameter, defaulting to the real CLI, so tests can pass a fake.
+export type DockerRunner = (args: string[], options?: { timeout?: number }) => Promise<string>;
+
+export type ExecFile = (file: string, args: string[], options: { timeout: number }) => Promise<{ stdout: string }>;
+
+const execFileAsync = promisify(childProcess.execFile);
+const realExecFile: ExecFile = (file, args, options) => execFileAsync(file, args, options);
+
 export function delay(ms: number) {
   return new Promise( resolve => setTimeout(resolve, ms) );
 }
 
-// Run a docker command and return its stdout.
-export async function docker(args: string[], options: { timeout?: number } = {}): Promise<string> {
+// The real DockerRunner.  Throws DockerNotInstalledError if there's no docker CLI.
+export async function docker(args: string[], options: { timeout?: number } = {}, exec: ExecFile = realExecFile): Promise<string> {
   try {
-    const { stdout } = await execFile("docker", args, { timeout: options.timeout || 0 });
+    const { stdout } = await exec("docker", args, { timeout: options.timeout || 0 });
     return stdout;
   } catch (caught) {
     if ((caught as ExecError).code === 'ENOENT') {
@@ -41,9 +48,9 @@ export async function docker(args: string[], options: { timeout?: number } = {})
 }
 
 // True if the daemon answers.  Throws DockerNotInstalledError if there's no docker CLI.
-export async function daemonIsUp(): Promise<boolean> {
+export async function daemonIsUp(run: DockerRunner = docker): Promise<boolean> {
   try {
-    await docker(["version", "--format", "{{.Server.Version}}"], { timeout: DAEMON_CHECK_TIMEOUT_MS });
+    await run(["version", "--format", "{{.Server.Version}}"], { timeout: DAEMON_CHECK_TIMEOUT_MS });
     return true;
   } catch (caught) {
     if (caught instanceof DockerNotInstalledError) {
@@ -53,28 +60,38 @@ export async function daemonIsUp(): Promise<boolean> {
   }
 }
 
-// Poll until the daemon answers.  Without timeoutMs it waits indefinitely.
-// Resolves false on timeout or when cancelled() returns true.
-export async function waitForDaemon(options: { timeoutMs?: number, cancelled?: () => boolean } = {}): Promise<boolean> {
+export interface WaitForDaemonOptions {
+  // Give up after this long.  Without it, wait indefinitely.
+  timeoutMs?: number;
+  // Checked before each poll; resolve false as soon as it returns true.
+  cancelled?: () => boolean;
+  pollMs?: number;
+  isUp?: () => Promise<boolean>;
+}
+
+// Poll until the daemon answers.  Resolves false on timeout or when cancelled.
+export async function waitForDaemon(options: WaitForDaemonOptions = {}): Promise<boolean> {
   const deadline = options.timeoutMs === undefined ? Infinity : Date.now() + options.timeoutMs;
   const cancelled = options.cancelled || (() => false);
+  const pollMs = options.pollMs === undefined ? DAEMON_POLL_MS : options.pollMs;
+  const isUp = options.isUp || (() => daemonIsUp());
   while (!cancelled()) {
-    if (await daemonIsUp()) {
+    if (await isUp()) {
       return true;
     }
-    if (Date.now() + DAEMON_POLL_MS > deadline) {
+    if (Date.now() + pollMs > deadline) {
       return false;
     }
-    await delay(DAEMON_POLL_MS);
+    await delay(pollMs);
   }
   return false;
 }
 
 // Pull the image once.  Returns undefined on success, or the last line of the
 // error on failure, so the caller can report it and carry on with a local copy.
-export async function refreshImage(image: string): Promise<string | undefined> {
+export async function refreshImage(image: string, run: DockerRunner = docker): Promise<string | undefined> {
   try {
-    await docker(["pull", image]);
+    await run(["pull", image]);
     return undefined;
   } catch (caught) {
     const err = caught as ExecError;
@@ -85,18 +102,18 @@ export async function refreshImage(image: string): Promise<string | undefined> {
 
 // True once Docker reports the container's process running.  False while it
 // doesn't exist yet (e.g. `docker run` is still pulling) or has stopped.
-export async function containerIsRunning(nameOrId: string): Promise<boolean> {
+export async function containerIsRunning(nameOrId: string, run: DockerRunner = docker): Promise<boolean> {
   try {
-    const state = await docker(["inspect", "--format", "{{.State.Running}}", nameOrId]);
+    const state = await run(["inspect", "--format", "{{.State.Running}}", nameOrId]);
     return state.trim() === 'true';
   } catch (error) {
     return false;
   }
 }
 
-export async function removeContainer(nameOrId: string) {
+export async function removeContainer(nameOrId: string, run: DockerRunner = docker) {
   try {
-    await docker(["rm", "-f", nameOrId]);
+    await run(["rm", "-f", nameOrId]);
   } catch (error) {
     // Already gone, or docker isn't reachable - nothing to clean up either way.
   }
