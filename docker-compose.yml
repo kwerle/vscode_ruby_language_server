@@ -1,8 +1,30 @@
 services:
+  # Builds, unit tests, lint, packaging: Node only.
   app:
     build:
       context: .
       dockerfile: Dockerfile
+      target: build
     working_dir: /app
+    # Stop cleanly on Ctrl-C or when VS Code ends a task (make watch).
+    init: true
     volumes:
       - ./:/app
+
+  # Integration and end-to-end tests. They start server containers through the
+  # host's Docker daemon, which resolves the project mount against the host's
+  # filesystem, so the project is mounted at the same path as on the host
+  # (PROJECT_DIR, set by the Makefile) instead of /app.
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: test
+    working_dir: ${PROJECT_DIR:?run through make}
+    init: true
+    environment:
+      - RLS_TEST_IMAGE
+      - VSCODE_TEST_VERSION
+    volumes:
+      - ${PROJECT_DIR:?run through make}:${PROJECT_DIR:?run through make}
+      - /var/run/docker.sock:/var/run/docker.sock

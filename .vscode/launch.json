@@ -10,7 +10,7 @@
 			"args": ["--extensionDevelopmentPath=${workspaceFolder}"],
 			"sourceMaps": true,
 			"outFiles": ["${workspaceFolder}/dist/**/*.js"],
-			"preLaunchTask": "npm: compile"
+			"preLaunchTask": "compile"
 		}
 	]
 }
