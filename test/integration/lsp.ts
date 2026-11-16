@@ -2,7 +2,7 @@
 // Framing is byte-accurate (Content-Length counts bytes), so a server that
 // miscounts shows up as a parse failure instead of being papered over.
 import { pathToFileURL } from 'url';
-import { StreamInfo } from 'vscode-languageclient';
+import { StreamInfo } from 'vscode-languageclient/node';
 
 interface Message {
   id?: number;

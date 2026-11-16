@@ -9,7 +9,7 @@ import { execFileSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { OutputChannel } from 'vscode';
-import { StreamInfo } from 'vscode-languageclient';
+import { StreamInfo } from 'vscode-languageclient/node';
 
 import { ContainerStatus, LABEL_PID, LABEL_ROOT, MAX_CRASHES, rootHashOf, ServerContainer } from '../../src/serverContainer';
 import { FakeOutputChannel } from '../support/vscode';

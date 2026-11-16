@@ -1,9 +1,17 @@
 'use strict';
 
 import * as vscode from 'vscode';
-import { LanguageClient, State } from 'vscode-languageclient';
+import { State } from 'vscode-languageclient/node';
 
-import { ServerContainer } from './serverContainer';
+import { ContainerStatus } from './serverContainer';
+
+// What the status bar follows: a client's state and its container's status.
+export interface Trackable {
+  readonly onDidChangeState: vscode.Event<{ newState: State }>;
+}
+export interface TrackableContainer {
+  readonly onDidChangeStatus: vscode.Event<ContainerStatus>;
+}
 
 // Status bar item showing the server's state.  Clicking it runs `command` (restart).
 // track() is called for each new client/container pair after a restart.
@@ -23,7 +31,7 @@ export class StatusBar implements vscode.Disposable {
     this.item.text = `Ruby LSP: ${label}`;
   }
 
-  track(client: LanguageClient, container: ServerContainer) {
+  track(client: Trackable, container: TrackableContainer) {
     this.untrack();
     this.tracking.push(
       client.onDidChangeState(event => {

@@ -3,7 +3,7 @@
 import * as vscode from 'vscode';
 import * as crypto from 'crypto';
 import { spawn, ChildProcess, SpawnOptions } from 'child_process';
-import { StreamInfo } from 'vscode-languageclient';
+import { StreamInfo } from 'vscode-languageclient/node';
 
 import { containerIsRunning, daemonIsUp, delay, docker, DockerRunner, removeContainer, waitForDaemon } from './docker';
 
@@ -158,9 +158,8 @@ export class CrashBudget {
 // goes to the output channel.
 //
 // The client calls start() on first start and again after every connection
-// close.  vscode-languageclient 6's error handler is synchronous and a client
-// whose start() rejected can never start again, so all waiting and retrying
-// happens here: start() waits for the Docker daemon for as long as it takes,
+// close.  A vscode-languageclient client whose start() rejected can never start
+// again (it remembers the failed start), so all waiting and retrying happens here: start() waits for the Docker daemon for as long as it takes,
 // retries failed launches, and rejects only once the server has crashed
 // MAX_CRASHES times within CRASH_WINDOW_MS while the daemon was up.
 export class ServerContainer implements vscode.Disposable {
@@ -298,8 +297,8 @@ export class ServerContainer implements vscode.Disposable {
   }
 
   // The client sends `initialize` as soon as start() resolves.  If the server
-  // dies during initialize, vscode-languageclient 6 gives up instead of
-  // restarting, so hand over the streams only once Docker reports the container
+  // dies during initialize, the client marks its start as failed and gives up
+  // instead of restarting, so hand over the streams only once Docker reports the container
   // running.  Failures before that (daemon down, image can't be pulled) are
   // retried by start().  Until then `docker run` may still be pulling the image.
   private async waitUntilRunning(name: string, child: ChildProcess) {

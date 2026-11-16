@@ -79,6 +79,8 @@ export const window = {
   statusBarItems: [] as FakeStatusBarItem[],
   outputChannels: [] as FakeOutputChannel[],
   messages: [] as ShownMessage[],
+  // The button "clicked" on each message shown, in order; undefined (dismissed) when empty.
+  answers: [] as (string | undefined)[],
 
   createStatusBarItem(alignment?: StatusBarAlignment, priority?: number): FakeStatusBarItem {
     const item = new FakeStatusBarItem(alignment, priority);
@@ -90,19 +92,21 @@ export const window = {
     window.outputChannels.push(channel);
     return channel;
   },
-  showErrorMessage(message: string, ...items: unknown[]): Promise<undefined> {
-    window.messages.push({ level: 'error', message, items });
-    return Promise.resolve(undefined);
+  showErrorMessage(message: string, ...items: unknown[]): Promise<string | undefined> {
+    return show('error', message, items);
   },
-  showWarningMessage(message: string, ...items: unknown[]): Promise<undefined> {
-    window.messages.push({ level: 'warning', message, items });
-    return Promise.resolve(undefined);
+  showWarningMessage(message: string, ...items: unknown[]): Promise<string | undefined> {
+    return show('warning', message, items);
   },
-  showInformationMessage(message: string, ...items: unknown[]): Promise<undefined> {
-    window.messages.push({ level: 'information', message, items });
-    return Promise.resolve(undefined);
+  showInformationMessage(message: string, ...items: unknown[]): Promise<string | undefined> {
+    return show('information', message, items);
   },
 };
+
+function show(level: ShownMessage['level'], message: string, items: unknown[]): Promise<string | undefined> {
+  window.messages.push({ level, message, items });
+  return Promise.resolve(window.answers.shift());
+}
 
 type CommandHandler = (...args: unknown[]) => unknown;
 
@@ -134,11 +138,19 @@ export const workspace = {
 export class CompletionItem {}
 export class CodeLens {}
 export class DocumentLink {}
+export class CodeAction {}
+export class Diagnostic {}
+export class CallHierarchyItem {}
+export class TypeHierarchyItem {}
+export class SymbolInformation {}
+export class InlayHint {}
+export class CancellationError extends Error {}
 
 export function resetStub() {
   window.statusBarItems = [];
   window.outputChannels = [];
   window.messages = [];
+  window.answers = [];
   commands.registered.clear();
   workspace.workspaceFolders = undefined;
   workspace.textDocuments = [];
