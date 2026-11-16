@@ -69,7 +69,7 @@ class FakeContainer implements Container {
   }
 }
 
-function setup(options: { root?: string | undefined, dockerUp?: boolean } = {}) {
+function setup(options: { root?: string | undefined, dockerUp?: boolean, devPort?: number } = {}) {
   const state = {
     dockerUp: options.dockerUp === undefined ? true : options.dockerUp,
     // What waitForDaemon does: come up, time out, or block until cancelled.
@@ -82,11 +82,14 @@ function setup(options: { root?: string | undefined, dockerUp?: boolean } = {}) 
     nextClient: { start: 'run' } as { start: 'run' | 'fail' | 'hang', serverInfo?: ServerInfo },
     clients: [] as FakeClient[],
     containers: [] as FakeContainer[],
+    daemonChecks: 0,
+    devConnections: [] as number[],
   };
   const deps: Partial<ManagerDeps> = {
     projectRoot: () => ('root' in options ? options.root : '/projects/demo'),
     readConfig: root => ({ image: 'example/image', logLevel: 'error', additionalGems: '', projectRoot: root }),
     daemonIsUp: async () => {
+      state.daemonChecks++;
       if (state.wait === 'not-installed') {
         const { DockerNotInstalledError } = await import('../../src/docker');
         throw new DockerNotInstalledError();
@@ -117,6 +120,11 @@ function setup(options: { root?: string | undefined, dockerUp?: boolean } = {}) 
       state.containers.push(container);
       return container;
     },
+    devPort: options.devPort,
+    createDevConnection: port => {
+      state.devConnections.push(port);
+      return new FakeContainer({ image: '', logLevel: '', additionalGems: '', projectRoot: '' });
+    },
     createClient: (_serverOptions, clientOptions) => {
       const client = new FakeClient(clientOptions, state.nextClient);
       state.clients.push(client);
@@ -142,6 +150,20 @@ describe('ServerManager', () => {
     assert.deepStrictEqual(state.clients[0].clientOptions.documentSelector, [{ scheme: 'file', language: 'ruby' }]);
     assert.strictEqual(state.clients[0].clientOptions.errorHandler, errorHandler);
     assert.strictEqual(state.containers[0].config.projectRoot, '/projects/demo');
+    assert.strictEqual(statusText(), 'Ruby LSP: Running');
+  });
+
+  it('connects to the development server, without Docker, when a dev port is set', async () => {
+    const { state, manager, output, statusText } = setup({ devPort: 7658, dockerUp: false });
+    await manager.start();
+
+    assert.deepStrictEqual(state.devConnections, [7658]);
+    assert.strictEqual(state.daemonChecks, 0);
+    assert.strictEqual(state.waits, 0);
+    assert.strictEqual(state.pulls, 0);
+    assert.strictEqual(state.containers.length, 0);
+    assert.strictEqual(state.clients[0].state, State.Running);
+    assert.match(output.text, /development server on port 7658/);
     assert.strictEqual(statusText(), 'Ruby LSP: Running');
   });
 

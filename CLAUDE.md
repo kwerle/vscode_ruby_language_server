@@ -32,6 +32,7 @@ Debugging in VS Code:
 
 - `make compile` type-checks, compiles to `out/` (used by tests), and builds the development bundle with a source map. `make watch` rebuilds the bundle on change; reload the test window to pick it up. Its container has a fixed name and is removed when it stops.
 - F5 ("Launch Client") runs the `compile` task (`make compile`) and opens an Extension Development Host. The VS Code tasks run `make`, not npm, and `npm.autoDetect` is off so the npm scripts view doesn't offer host npm.
+- "Launch Client (debug server)" sets `RUBY_LANGUAGE_SERVER_DEV_PORT=7658`. With it, `ServerManager` skips Docker and connects over TCP to a server started by ruby_language_server's `make debug_server` ("Debug server" there), so the server's Ruby code can be debugged with breakpoints (`src/devServer.ts`). It's development only: not a setting, and the stdio transport below is unchanged.
 - The minimum VS Code version is 1.82 (`engines.vscode`), which runs extensions on Node 18. Keep `@types/vscode` at the same version as the engine: newer types would allow APIs that 1.82 doesn't have, and `vsce` refuses to package that. TypeScript is 5.x with `strict` on.
 
 ## Style

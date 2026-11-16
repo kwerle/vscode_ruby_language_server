@@ -11,6 +11,20 @@
 			"sourceMaps": true,
 			"outFiles": ["${workspaceFolder}/dist/**/*.js"],
 			"preLaunchTask": "compile"
+		},
+		{
+			// Uses a server you're debugging instead of starting a container: run
+			// "Debug server" (make debug_server) in ruby_language_server first.  It opens
+			// that checkout, which is the project make debug_server mounts by default.
+			"type": "extensionHost",
+			"request": "launch",
+			"name": "Launch Client (debug server)",
+			"runtimeExecutable": "${execPath}",
+			"args": ["--extensionDevelopmentPath=${workspaceFolder}", "${env:HOME}/Source/ruby_language_server"],
+			"env": { "RUBY_LANGUAGE_SERVER_DEV_PORT": "7658" },
+			"sourceMaps": true,
+			"outFiles": ["${workspaceFolder}/dist/**/*.js"],
+			"preLaunchTask": "compile"
 		}
 	]
 }
