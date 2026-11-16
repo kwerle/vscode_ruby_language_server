@@ -9,6 +9,7 @@
 * Show the server's version in the output, and warn if the local server image is too old
 * Run the server container locked down: no network, no Linux capabilities, read-only project
 * Works in Restricted Mode (untrusted workspaces); not available in virtual workspaces
+* Upgrade to vscode-languageclient 9
 
 #### 0.1.2 Tue Oct 25 19:53:55 PDT 2022
 

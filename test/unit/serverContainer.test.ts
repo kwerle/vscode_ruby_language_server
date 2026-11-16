@@ -3,7 +3,7 @@ import { ChildProcess, spawnSync } from 'child_process';
 import { EventEmitter } from 'events';
 import { PassThrough } from 'stream';
 import { OutputChannel } from 'vscode';
-import { StreamInfo } from 'vscode-languageclient';
+import { StreamInfo } from 'vscode-languageclient/node';
 
 import {
   containerName, ContainerDeps, ContainerStatus, CrashBudget, CRASH_WINDOW_MS, dockerArgs, LABEL_PID, LABEL_ROOT,

@@ -20,8 +20,9 @@ const EXPECTED = [
 ];
 // Added by vsce itself, outside extension/.
 const VSCE_FILES = ['extension.vsixmanifest', '[Content_Types].xml'];
-// The bundle is a little over 200 KB minified; a big jump means something new got bundled.
-const MAX_BUNDLE_BYTES = 400 * 1024;
+// The bundle is about 370 KB minified (mostly vscode-languageclient 9); a big
+// jump means something new got bundled.
+const MAX_BUNDLE_BYTES = 600 * 1024;
 
 const vsix = process.argv[2] || `${pkg.name}-${pkg.version}.vsix`;
 let listing;

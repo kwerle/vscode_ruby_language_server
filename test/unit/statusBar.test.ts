@@ -1,7 +1,7 @@
 import * as assert from 'assert';
-import { LanguageClient, State } from 'vscode-languageclient';
+import { State } from 'vscode-languageclient/node';
 
-import { ContainerStatus, ServerContainer } from '../../src/serverContainer';
+import { ContainerStatus } from '../../src/serverContainer';
 import { StatusBar } from '../../src/statusBar';
 import { EventEmitter, FakeStatusBarItem, resetStub, window } from '../support/vscode';
 
@@ -11,8 +11,8 @@ const RESTART = 'ruby-language-server.restart';
 function fakes() {
   const clientStates = new EventEmitter<{ oldState: State, newState: State }>();
   const containerStatus = new EventEmitter<ContainerStatus>();
-  const client = { onDidChangeState: clientStates.event } as unknown as LanguageClient;
-  const container = { onDidChangeStatus: containerStatus.event } as unknown as ServerContainer;
+  const client = { onDidChangeState: clientStates.event };
+  const container = { onDidChangeStatus: containerStatus.event };
   const setState = (newState: State) => clientStates.fire({ oldState: State.Starting, newState });
   return { client, container, setState, containerStatus };
 }
