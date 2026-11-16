@@ -25,7 +25,7 @@ Host-side, for debugging in VS Code:
 ## Architecture
 
 - `src/extension.ts`: activation, user-facing messages and wiring. `startServer()` waits for the Docker daemon (up to 2 minutes on first start, then offers Retry), pulls the image once in the background, and creates a new `ServerContainer` and `LanguageClient`. The `ruby-language-server.restart` command and the status bar click both call `startServer()`.
-- `src/serverContainer.ts`: `ServerContainer` runs one server container and returns a TCP socket to the client. `start()` is called again after every connection close and replaces the previous container; `dispose()` kills it and runs `docker rm -f`.
+- `src/serverContainer.ts`: `ServerContainer` runs one server container and returns its stdin/stdout to the client. `start()` is called again after every connection close and replaces the previous container; `dispose()` kills it and runs `docker rm -f`.
 - `src/statusBar.ts`: the status bar item (Waiting for Docker / Starting / Running / Stopped). `track()` is called again for each new client.
 - `src/docker.ts`: plain Docker CLI helpers (`daemonIsUp`, `waitForDaemon`, `refreshImage`, `removeContainer`). No VS Code UI here.
 
@@ -35,10 +35,10 @@ Restart and retry design, shaped by `vscode-languageclient` 6:
 - If a client's `start()` rejects, that client can never start again (it keeps the rejected connection). So Restart creates a new `LanguageClient` rather than reusing one. A `ServerContainer` disposed mid-start never settles its promise, so the discarded client doesn't show a spurious error.
 - Containers are named `ruby-language-server-<root hash>-<pid>` and labeled with both values. Before each start, containers for the same project root are removed if their pid label is this process or a dead one. Containers belonging to other live windows are left alone.
 
-Transport: the container gets `LSP_PORT=2087` (server v0.9.0+) and is published on `127.0.0.1:<free host port>`. Two server/Docker behaviours shape the connection code. Don't "simplify" them away:
+Transport: stdio. The container runs with `docker run -i` (never `-t`: a TTY rewrites line endings and corrupts the stream), and the client talks LSP over its stdin/stdout. Don't move this to TCP to fix garbled messages. LSP framing (`Content-Length` + JSON body) is the same over both, and the known cause of garbled messages is a server bug that breaks both: `Content-Length` counted characters, not bytes (ruby_language_server#167). Two rules follow from stdio:
 
-- The server calls `accept` **once**. A readiness probe that connects and disconnects uses up that accept and kills the server.
-- Docker's port proxy accepts host connections before the server listens, then drops them. So the client keeps the first connection that stays open for `SETTLE_MS` and hands that same socket to the `LanguageClient`.
+- Nothing but the language client may read the container's stdout or write its stdin. `ServerContainer` only listens to stderr.
+- `start()` hands the streams to the client only once Docker reports the container running (`containerIsRunning`). The client sends `initialize` at once, and if the server dies during `initialize`, vscode-languageclient 6 gives up instead of restarting. Failures before that point (daemon down, image can't be pulled) are retried inside `start()`.
 
 The server logs to stderr; those logs show up in the "Ruby Language Server" output channel.
 

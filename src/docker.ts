@@ -83,6 +83,17 @@ export async function refreshImage(image: string): Promise<string | undefined> {
   }
 }
 
+// True once Docker reports the container's process running.  False while it
+// doesn't exist yet (e.g. `docker run` is still pulling) or has stopped.
+export async function containerIsRunning(nameOrId: string): Promise<boolean> {
+  try {
+    const state = await docker(["inspect", "--format", "{{.State.Running}}", nameOrId]);
+    return state.trim() === 'true';
+  } catch (error) {
+    return false;
+  }
+}
+
 export async function removeContainer(nameOrId: string) {
   try {
     await docker(["rm", "-f", nameOrId]);

@@ -2,19 +2,16 @@
 
 import * as vscode from 'vscode';
 import * as crypto from 'crypto';
-import * as net from 'net';
 import { spawn, ChildProcess } from 'child_process';
 import { StreamInfo } from 'vscode-languageclient';
 
-import { daemonIsUp, delay, docker, removeContainer, waitForDaemon } from './docker';
+import { containerIsRunning, daemonIsUp, delay, docker, removeContainer, waitForDaemon } from './docker';
 
-// Port the server listens on inside the container.  The host side is picked at runtime.
-const CONTAINER_PORT = 2087;
-// How long to wait for the server to start accepting connections.
-const CONNECT_TIMEOUT_MS = 90 * 1000;
-// A connection must stay open this long before we trust it (see connectWhenReady).
-const SETTLE_MS = 500;
-const RETRY_MS = 250;
+// How often to ask Docker whether a just-launched container is running.
+const RUNNING_POLL_MS = 250;
+// Upper bound on `docker run` getting the container running.  Generous because
+// on a first install `docker run` pulls the image before starting it.
+const START_TIMEOUT_MS = 10 * 60 * 1000;
 // Give up after this many crashes (while the Docker daemon is up) within the window.
 // Matches vscode-languageclient's default restart policy.
 const MAX_CRASHES = 5;
@@ -34,7 +31,9 @@ export interface ServerConfig {
 
 export type ContainerStatus = 'waiting-for-docker' | 'starting';
 
-// Runs the language server in a docker container and connects to it over TCP.
+// Runs the language server in a docker container and talks LSP to it over the
+// container's stdin/stdout (`docker run -i`).  The server logs to stderr, which
+// goes to the output channel.
 //
 // The client calls start() on first start and again after every connection
 // close.  vscode-languageclient 6's error handler is synchronous and a client
@@ -126,14 +125,14 @@ export class ServerContainer implements vscode.Disposable {
 
   private async launch(): Promise<StreamInfo> {
     await this.removeStaleContainers();
-    const hostPort = await findFreePort();
-    this.name = `ruby-language-server-${this.rootHash}-${process.pid}`;
-    this.child = this.spawnContainer(this.name, hostPort);
+    const name = `ruby-language-server-${this.rootHash}-${process.pid}`;
+    const child = this.spawnContainer(name);
+    this.name = name;
+    this.child = child;
 
-    const socket = await this.connectWhenReady(hostPort, this.child);
-    socket.setKeepAlive(true, 60 * 1000);
-    this.output.appendLine(`Connected to language server on localhost:${hostPort}`);
-    return { reader: socket, writer: socket };
+    await this.waitUntilRunning(name, child);
+    this.output.appendLine(`Container ${name} is running`);
+    return { reader: child.stdout!, writer: child.stdin! };
   }
 
   private stopContainer() {
@@ -170,16 +169,15 @@ export class ServerContainer implements vscode.Disposable {
     }
   }
 
-  private dockerArgs(name: string, hostPort: number): string[] {
+  private dockerArgs(name: string): string[] {
     const { image, logLevel, additionalGems, projectRoot } = this.config;
+    // -i without -t: a TTY would rewrite line endings and corrupt the LSP stream.
     const args = [
-      "run", "--rm",
+      "run", "--rm", "-i",
       "--name", name,
       "--label", `${LABEL_ROOT}=${this.rootHash}`,
       "--label", `${LABEL_PID}=${process.pid}`,
       "-e", `LOG_LEVEL=${logLevel}`,
-      "-e", `LSP_PORT=${CONTAINER_PORT}`,
-      "-p", `127.0.0.1:${hostPort}:${CONTAINER_PORT}`,
       "-v", `${projectRoot}:/project`,
       "-w", "/project",
     ];
@@ -190,11 +188,11 @@ export class ServerContainer implements vscode.Disposable {
     return args;
   }
 
-  private spawnContainer(name: string, hostPort: number): ChildProcess {
-    this.output.appendLine(`Starting container ${name} (localhost:${hostPort} -> ${CONTAINER_PORT})`);
+  private spawnContainer(name: string): ChildProcess {
+    this.output.appendLine(`Starting container ${name}`);
     this.stderrTail = '';
-    const child = spawn("docker", this.dockerArgs(name, hostPort), { stdio: ['ignore', 'pipe', 'pipe'] });
-    child.stdout!.on('data', (data: Buffer) => this.output.append(data.toString()));
+    // stdin/stdout carry the protocol and belong to the language client; only stderr is ours.
+    const child = spawn("docker", this.dockerArgs(name), { stdio: ['pipe', 'pipe', 'pipe'] });
     child.stderr!.on('data', (data: Buffer) => {
       const text = data.toString();
       this.stderrTail = (this.stderrTail + text).slice(-2000);
@@ -205,24 +203,23 @@ export class ServerContainer implements vscode.Disposable {
     return child;
   }
 
-  // Docker's port proxy accepts host connections before the server inside the
-  // container is listening, then drops them.  The server only accepts a single
-  // connection and waits for the client to speak first, so the first connection
-  // that stays open is the real one - and we must hand that exact socket to the
-  // client rather than probing and reconnecting.
-  private async connectWhenReady(port: number, child: ChildProcess): Promise<net.Socket> {
-    const deadline = Date.now() + CONNECT_TIMEOUT_MS;
+  // The client sends `initialize` as soon as start() resolves.  If the server
+  // dies during initialize, vscode-languageclient 6 gives up instead of
+  // restarting, so hand over the streams only once Docker reports the container
+  // running.  Failures before that (daemon down, image can't be pulled) are
+  // retried by start().  Until then `docker run` may still be pulling the image.
+  private async waitUntilRunning(name: string, child: ChildProcess) {
+    const deadline = Date.now() + START_TIMEOUT_MS;
     while (Date.now() < deadline) {
       if (child.exitCode !== null || child.signalCode !== null) {
-        throw new Error(`Container exited before accepting a connection.\n${this.stderrTail}`);
+        throw new Error(`Container exited before it started.\n${this.stderrTail}`);
       }
-      const socket = await connectAndSettle(port);
-      if (socket) {
-        return socket;
+      if (await containerIsRunning(name)) {
+        return;
       }
-      await delay(RETRY_MS);
+      await delay(RUNNING_POLL_MS);
     }
-    throw new Error(`Timed out waiting for the language server on port ${port}.\n${this.stderrTail}`);
+    throw new Error(`Timed out waiting for container ${name} to start.\n${this.stderrTail}`);
   }
 }
 
@@ -237,41 +234,4 @@ function processIsAlive(pid: number): boolean {
     // EPERM: it exists but belongs to someone else.
     return (caught as NodeJS.ErrnoException).code === 'EPERM';
   }
-}
-
-// Ask the OS for an unused port on the loopback interface.
-function findFreePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const server = net.createServer();
-    server.unref();
-    server.on('error', reject);
-    server.listen(0, '127.0.0.1', () => {
-      const port = (server.address() as net.AddressInfo).port;
-      server.close(() => resolve(port));
-    });
-  });
-}
-
-// Resolve with a connected socket that is still open after SETTLE_MS, or null.
-function connectAndSettle(port: number): Promise<net.Socket | null> {
-  return new Promise(resolve => {
-    const socket = net.connect(port, '127.0.0.1');
-    let done = false;
-    const fail = () => {
-      if (done) { return; }
-      done = true;
-      socket.destroy();
-      resolve(null);
-    };
-    const events = ['error', 'close', 'end'];
-    events.forEach(event => socket.once(event, fail));
-    socket.once('connect', () => {
-      setTimeout(() => {
-        if (done) { return; }
-        done = true;
-        events.forEach(event => socket.removeListener(event, fail));
-        resolve(socket);
-      }, SETTLE_MS);
-    });
-  });
 }
