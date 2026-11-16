@@ -5,6 +5,8 @@
 * Wait for Docker to start, and restart the server after Docker restarts, without reloading the window (#28)
 * Add a "Ruby Language Server: Restart" command; the status bar shows the server's state and restarts it when clicked
 * A failed image pull shows one warning and uses the local image
+* Show the server's version in the output, and warn if the local server image is too old
+* Run the server container locked down: no network, no Linux capabilities, read-only project
 
 #### 0.1.2 Tue Oct 25 19:53:55 PDT 2022
 

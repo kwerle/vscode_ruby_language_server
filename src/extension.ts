@@ -6,6 +6,7 @@ import { CloseAction, ErrorAction, ErrorHandler, LanguageClient, LanguageClientO
 
 import { daemonIsUp, delay, DockerNotInstalledError, refreshImage, waitForDaemon } from './docker';
 import { ServerConfig, ServerContainer } from './serverContainer';
+import { checkServerVersion } from './serverVersion';
 import { StatusBar } from './statusBar';
 
 const RESTART_COMMAND = 'ruby-language-server.restart';
@@ -21,6 +22,7 @@ let container: ServerContainer | undefined;
 // Bumped by every startServer() so an older, still-waiting start can tell it's been superseded.
 let generation = 0;
 let imageRefreshed = false;
+let versionWarningShown = false;
 
 // ServerContainer.start() does the waiting and retrying, so the client always
 // restarts after a close.  Connection errors use the library's default policy.
@@ -115,6 +117,19 @@ function refreshImageOnce(image: string) {
   });
 }
 
+// Once a client is running, log the server's name and version, and warn (once
+// per session) if it's known to be too old.
+function reportServerVersion(runningClient: LanguageClient, image: string) {
+  const result = runningClient.initializeResult;
+  const check = checkServerVersion(result && result.serverInfo, image);
+  output.appendLine(check.log);
+  if (check.warning && !versionWarningShown) {
+    versionWarningShown = true;
+    vscode.window.showWarningMessage(check.warning, 'Show Output')
+      .then(choice => { if (choice === 'Show Output') { output.show(); } });
+  }
+}
+
 async function stopServer() {
   const oldClient = client;
   const oldContainer = container;
@@ -161,6 +176,8 @@ async function startServer() {
   client = newClient;
   statusBar.track(newClient, newContainer);
   newClient.start();
+  // onReady rejects when the start fails; that's reported elsewhere.
+  newClient.onReady().then(() => reportServerVersion(newClient, config.image), () => undefined);
 }
 
 export function activate(context: vscode.ExtensionContext) {
