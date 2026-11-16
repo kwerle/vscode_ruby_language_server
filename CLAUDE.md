@@ -8,7 +8,7 @@ Git-flow:
 
 - **`develop`**: new work is forked from `develop` on its own branch (e.g. `feature/<name>`), then merged back into `develop` by PR when it's done. Don't commit directly to `develop`.
 - **`master`**: released code only. It changes when we ship: a release is merged into `master` and tagged (e.g. `0.1.2`), then merged back into `develop`.
-- Dependabot PRs target `master`. After merging them, bring `develop` up to date with `master`.
+- Dependabot (`.github/dependabot.yml`): version updates for npm, GitHub Actions and the build image target `develop`. Security updates always target `master`; after merging one, bring `develop` up to date with `master`. Dependabot reads its config from `master`, so config changes take effect when they ship.
 
 ## Build and run
 
