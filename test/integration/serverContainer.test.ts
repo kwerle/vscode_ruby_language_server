@@ -80,7 +80,27 @@ function versionAtLeast(version: string, minimum: string): boolean {
 }
 
 function symbolNames(result: unknown): string[] {
-  return (JSON.stringify(result).match(/"name":"[^"]*"/g) || []).map(pair => JSON.parse(pair.slice(7)));
+  return (JSON.stringify(result || []).match(/"name":"[^"]*"/g) || []).map(pair => JSON.parse(pair.slice(7)));
+}
+
+// Open a file and ask for its symbols until the server has indexed it.  On
+// initialize the server indexes the project in a forked process, and
+// documentSymbol reads that index, so the first answers can be empty while it
+// works (VS Code simply asks again).  Fails with the last answer after a while.
+async function symbolsOf(lsp: LspConnection, file: string, output: FakeOutputChannel): Promise<string[]> {
+  lsp.open(file, fs.readFileSync(file, 'utf8'));
+  const deadline = Date.now() + 20000;
+  let names: string[] = [];
+  while (Date.now() < deadline) {
+    const reply = await lsp.request('textDocument/documentSymbol', { textDocument: { uri: uriOf(file) } }, 15000);
+    names = symbolNames(reply.result);
+    if (names.length > 0) {
+      return names;
+    }
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+  assert.fail(`No symbols for ${path.basename(file)} after 20s (last answer ${JSON.stringify(names)}).\n` +
+    `Server output:\n${output.text}`);
 }
 
 describe('ServerContainer against real Docker', function () {
@@ -113,16 +133,13 @@ describe('ServerContainer against real Docker', function () {
   });
 
   it('starts the server and answers requests over stdio', async () => {
-    const { container } = makeContainer();
+    const { container, output } = makeContainer();
     current = container;
     const lsp = new LspConnection(await container.start() as StreamInfo);
 
     const init = await lsp.initialize(FIXTURE);
     assert.ok(init.result, 'initialize returns a result');
-    const file = path.join(FIXTURE, 'sample.rb');
-    lsp.open(file, fs.readFileSync(file, 'utf8'));
-    const symbols = await lsp.request('textDocument/documentSymbol', { textDocument: { uri: uriOf(file) } });
-    assert.deepStrictEqual(symbolNames(symbols.result), ['Greeter', 'hello']);
+    assert.deepStrictEqual(await symbolsOf(lsp, path.join(FIXTURE, 'sample.rb'), output), ['Greeter', 'hello']);
     assert.deepStrictEqual(lsp.unparseable, []);
   });
 
@@ -148,24 +165,25 @@ describe('ServerContainer against real Docker', function () {
       console.log(`      skipped: server ${serverVersion} predates the Content-Length fix in 0.9.8`);
       this.skip();
     }
-    const { container } = makeContainer();
+    const { container, output } = makeContainer();
     current = container;
     const lsp = new LspConnection(await container.start() as StreamInfo);
     await lsp.initialize(FIXTURE);
 
-    const file = path.join(FIXTURE, 'cafe.rb');
-    lsp.open(file, fs.readFileSync(file, 'utf8'));
-    let symbols;
+    let names: string[];
     try {
-      symbols = await lsp.request('textDocument/documentSymbol', { textDocument: { uri: uriOf(file) } }, 15000);
+      names = await symbolsOf(lsp, path.join(FIXTURE, 'cafe.rb'), output);
     } catch (error) {
-      // A server that counts Content-Length in characters instead of bytes
-      // (ruby_language_server#167, fixed in 0.9.8) cuts these replies short.
-      assert.fail(`No usable reply; ${lsp.unparseable.length} message(s) couldn't be parsed. ` +
-        'The server probably counts Content-Length in characters, not bytes (ruby_language_server#167).');
+      if (lsp.unparseable.length > 0) {
+        // A server that counts Content-Length in characters instead of bytes
+        // (ruby_language_server#167, fixed in 0.9.8) cuts these replies short.
+        assert.fail(`${lsp.unparseable.length} message(s) couldn't be parsed. ` +
+          'The server probably counts Content-Length in characters, not bytes (ruby_language_server#167).');
+      }
+      throw error;
     }
     assert.deepStrictEqual(lsp.unparseable, []);
-    assert.deepStrictEqual(symbolNames(symbols.result), ['Café', 'naïve_método']);
+    assert.deepStrictEqual(names, ['Café', 'naïve_método']);
   });
 
   it('waits while Docker is down, then starts once it is back', async () => {
