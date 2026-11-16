@@ -4,7 +4,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// The alias has no type definitions of its own.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const Mocha = require('mocha-vscode-host');
 
 export function run(): Promise<void> {

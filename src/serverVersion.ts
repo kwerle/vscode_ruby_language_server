@@ -1,5 +1,3 @@
-'use strict';
-
 // The extension follows the server image's `latest` tag, so it can meet any
 // server version: an old local image when offline, or one with known bugs.
 // The server reports its version in the initialize result (`serverInfo`,

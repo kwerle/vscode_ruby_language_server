@@ -32,6 +32,9 @@ jobs:
       - name: Install
         run: yarn install --frozen-lockfile
 
+      - name: Lint
+        run: yarn lint
+
       - name: Compile and bundle
         run: yarn compile
 
