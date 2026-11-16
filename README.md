@@ -40,7 +40,7 @@ Releases are published by the Release workflow ([release.yml](.github/workflows/
 
 The workflow checks the tag against `package.json` and the CHANGELOG, checks the commit is on `master`, runs the CI build and the integration and end-to-end tests, publishes the `.vsix` CI built to the [Marketplace](https://marketplace.visualstudio.com/manage), and creates a GitHub release with the `.vsix` attached. If a check fails, nothing is published: fix it, delete the tag (`git push origin :refs/tags/<version>`), and tag again.
 
-One-time setup: the Marketplace token is the `VSCE_PAT` secret in the `release` environment, which only release tags can use. It's an Azure DevOps personal access token with the Marketplace › Manage scope for all accessible organizations, and it expires (a year at most), so renew it before then.
+Publishing uses the Marketplace's [Trusted Publishing](https://code.visualstudio.com/api/working-with-extensions/publishing-extension): there's no token to store or renew. The `KurtWerle` publisher's Trusted Publishing policy allows `kwerle/vscode_ruby_language_server`, workflow `release.yml`, environment `release`; if either name changes, update the policy at https://marketplace.visualstudio.com/manage.
 
 ## License
 
