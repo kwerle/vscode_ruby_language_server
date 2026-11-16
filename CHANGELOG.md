@@ -1,6 +1,6 @@
 # Change Log
 
-#### Unreleased
+#### 0.2.0 Sun Nov 15 22:37:57 PST 2026
 
 * Requires VS Code 1.82 or later
 * Wait for Docker to start, and restart the server after Docker restarts, without reloading the window (#28)
