@@ -42,6 +42,11 @@ Transport: stdio. The container runs with `docker run -i` (never `-t`: a TTY rew
 
 The server logs to stderr; those logs show up in the "Ruby Language Server" output channel.
 
+## Security checks
+
+- CI's "Build and test" job runs `scripts/audit.js`, which fails on high or critical advisories in the runtime dependencies (the ones inlined into the bundle). It reads `yarn audit --json`, because yarn's exit code doesn't follow `--level` reliably. Development-only advisories don't fail the build.
+- CodeQL (`.github/workflows/codeql.yml`) scans `src/`, `scripts/` and `test/` on PRs, on pushes to `develop` and `master`, and weekly.
+
 ## Testing
 
 `npm test` (or `make test` in Docker) compiles with `tsc` and runs the Mocha unit tests in `test/unit/` in plain Node. `.mocharc.json` loads `test/support/register.ts` first, which makes `require('vscode')` return the stub in `test/support/vscode.ts`. The stub fakes only what the code uses; when code under test needs more of the VS Code API, add it there. Its fakes record what was done to them (`window.statusBarItems`, `window.messages`, `commands.registered`), and `resetStub()` clears them between tests.
