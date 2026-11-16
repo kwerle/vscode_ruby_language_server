@@ -38,6 +38,10 @@ jobs:
       - name: Unit tests
         run: yarn test
 
+      # Runtime dependencies are inlined into the shipped bundle.
+      - name: Audit runtime dependencies (fail on high or critical)
+        run: node scripts/audit.js --groups dependencies --level high
+
       # The project pins TypeScript 3.9; the editor's newer TypeScript checks
       # with strict settings (see CLAUDE.md). Keep both passing until the
       # toolchain upgrade (#49) makes strict the default.
