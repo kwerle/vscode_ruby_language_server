@@ -5,6 +5,8 @@ on:
     branches: [develop, master]
   push:
     branches: [develop, master]
+  # Also run by the release workflow (release.yml) before it publishes.
+  workflow_call:
 
 permissions:
   contents: read

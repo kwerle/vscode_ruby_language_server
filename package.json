@@ -33,6 +33,7 @@
         "lint": "eslint .",
         "watch": "node scripts/bundle.js --watch",
         "package": "vsce package --no-dependencies",
+        "release:check": "node scripts/check-release.js",
         "test": "tsc -p ./ && mocha",
         "test:integration": "tsc -p ./ && mocha --config .mocharc.integration.json",
         "test:e2e": "npm run compile && node out/test/e2e/runTest.js"

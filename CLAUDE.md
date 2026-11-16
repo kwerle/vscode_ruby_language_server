@@ -8,6 +8,7 @@ Git-flow:
 
 - **`develop`**: new work is forked from `develop` on its own branch (e.g. `feature/<name>`), then merged back into `develop` by PR when it's done. Don't commit directly to `develop`.
 - **`master`**: released code only. It changes when we ship: a release is merged into `master` and tagged (e.g. `0.1.2`), then merged back into `develop`.
+- **Releases**: pushing a bare version tag (`0.2.0`, no `v`) on `master` runs `.github/workflows/release.yml`. It checks the tag against `package.json` and CHANGELOG.md (`scripts/check-release.js`, also `npm run release:check -- <version>`), runs `ci.yml` and `integration.yml` as reusable workflows, publishes the `.vsix` CI built to the Marketplace, and creates a GitHub release. The steps are in the README's "Releasing" section.
 - Dependabot (`.github/dependabot.yml`): version updates for npm, GitHub Actions and the build image target `develop`. Security updates always target `master`; after merging one, bring `develop` up to date with `master`. Dependabot reads its config from `master`, so config changes take effect when they ship.
 
 ## Build and run
@@ -56,6 +57,7 @@ The server logs to stderr; those logs show up in the "Ruby Language Server" outp
 - `package.json` declares support for untrusted workspaces (Restricted Mode). That relies on every setting being `user` or `machine` scoped, so a workspace can't choose the image or how it runs. `test/unit/manifest.test.ts` enforces both. If the server ever starts running project code (for example, RuboCop with the project's config), revisit the declaration.
 - CI's "Build and test" job runs `npm audit --omit=dev --audit-level=high`, which fails on high or critical advisories in the runtime dependencies (the ones inlined into the bundle). Development-only advisories don't fail the build.
 - Known development-only finding: `serialize-javascript` 6 (high) comes in through `mocha-vscode-host` (Mocha 10). It's only loaded by Mocha's parallel worker pool, which the end-to-end suite doesn't use. The fixed versions need Node 20, and VS Code 1.82's extension host runs Node 18, so an override would install a package that can't run there. It goes away when the minimum VS Code moves to one with Node 20 (1.90 or later) and the alias moves to a current Mocha.
+- The Marketplace token (`VSCE_PAT`) is in the `release` environment, which only release tags can use. Only the publish job in `release.yml` reads it, and it installs with `--ignore-scripts`. Actions in `release.yml` are pinned by commit SHA; keep it that way.
 - CodeQL (`.github/workflows/codeql.yml`) scans `src/`, `scripts/` and `test/` on PRs, on pushes to `develop` and `master`, and weekly.
 
 ## Testing
