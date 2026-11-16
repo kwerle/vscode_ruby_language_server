@@ -7,7 +7,8 @@ import { StreamInfo } from 'vscode-languageclient';
 
 import {
   containerName, ContainerDeps, ContainerStatus, CrashBudget, CRASH_WINDOW_MS, dockerArgs, LABEL_PID, LABEL_ROOT,
-  MAX_CRASHES, processIsAlive, rootHashOf, ServerConfig, ServerContainer, staleContainerIds,
+  MAX_CRASHES, MEMORY_LIMIT, mountSpec, PIDS_LIMIT, processIsAlive, rootHashOf, ServerConfig, ServerContainer,
+  staleContainerIds,
 } from '../../src/serverContainer';
 import { FakeOutputChannel, resetStub } from '../support/vscode';
 
@@ -27,22 +28,49 @@ describe('dockerArgs', () => {
     assert.ok(!args.includes('-t') && !args.includes('-it'));
   });
 
-  it('names and labels the container, mounts the project and runs the image last', () => {
+  it('names, labels and locks down the container, mounts the project read-only and runs the image last', () => {
     assert.deepStrictEqual(args, [
       'run', '--rm', '-i',
       '--name', 'the-name',
       '--label', `${LABEL_ROOT}=abc123`,
       '--label', `${LABEL_PID}=${PID}`,
+      '--network', 'none',
+      '--cap-drop', 'ALL',
+      '--security-opt', 'no-new-privileges',
+      '--pids-limit', PIDS_LIMIT,
+      '--memory', MEMORY_LIMIT,
       '-e', 'LOG_LEVEL=error',
-      '-v', '/projects/demo:/project',
+      '--mount', 'type=bind,source=/projects/demo,target=/project,readonly',
       '-w', '/project',
       'example/image',
     ]);
   });
 
+  it('never uses -v, whose colon-separated spec a path can change', () => {
+    assert.ok(!args.includes('-v') && !args.includes('--volume'));
+  });
+
   it('passes additional gems only when set', () => {
     const withGems = dockerArgs({ ...config, additionalGems: 'a,b' }, 'n', 'h', PID);
     assert.deepStrictEqual(withGems.slice(-3), ['-e', 'ADDITIONAL_GEMS=a,b', 'example/image']);
+  });
+});
+
+describe('mountSpec', () => {
+  it('mounts the project read-only at /project', () => {
+    assert.strictEqual(mountSpec('/projects/demo'), 'type=bind,source=/projects/demo,target=/project,readonly');
+  });
+
+  it('leaves colons and spaces alone', () => {
+    assert.strictEqual(mountSpec('/p/a:b c'), 'type=bind,source=/p/a:b c,target=/project,readonly');
+  });
+
+  it('quotes a path containing a comma, so it cannot add mount options', () => {
+    assert.strictEqual(mountSpec('/p/x,readonly=false'), 'type=bind,"source=/p/x,readonly=false",target=/project,readonly');
+  });
+
+  it('doubles quotes inside a quoted path', () => {
+    assert.strictEqual(mountSpec('/p/a"b,c'), 'type=bind,"source=/p/a""b,c",target=/project,readonly');
   });
 });
 
