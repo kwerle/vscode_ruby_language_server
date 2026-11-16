@@ -23,7 +23,8 @@
         "watch": "node scripts/bundle.js --watch",
         "package": "vsce package --no-dependencies --no-yarn",
         "postinstall": "#node ./node_modules/@types/vscode/bin/install",
-        "test": "tsc -p ./ && mocha"
+        "test": "tsc -p ./ && mocha",
+        "test:integration": "tsc -p ./ && mocha --config .mocharc.integration.json"
     },
     "devDependencies": {
         "@types/mocha": "^10.0.10",
