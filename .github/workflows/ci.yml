@@ -43,3 +43,16 @@ jobs:
       # toolchain upgrade (#49) makes strict the default.
       - name: Type-check with strict TypeScript 5
         run: npx --yes -p typescript@5.6.3 tsc -p . --noEmit --strict
+
+      - name: Package
+        run: yarn package
+
+      - name: Check package contents
+        run: node scripts/check-package.js
+
+      - name: Upload the .vsix
+        uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: "*.vsix"
+          if-no-files-found: error
