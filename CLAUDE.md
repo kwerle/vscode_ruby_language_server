@@ -59,4 +59,10 @@ The server logs to stderr; those logs show up in the "Ruby Language Server" outp
 - Keep unit tests free of Docker and the network. Logic that talks to Docker should take its command runner as a parameter, so tests can pass a fake.
 - Integration tests (`test/integration/`, `npm run test:integration`, needs Docker) run the real `ServerContainer` against real Docker and the server image, with a byte-accurate LSP client (`test/integration/lsp.ts`) and the fixture project in `test/fixtures/project/`. `RLS_TEST_IMAGE` picks another image, such as a local build of the server. CI runs them on PRs, on pushes, and daily against `latest` (`.github/workflows/integration.yml`). Tests that need a newer server check the image's version and skip with a message on older ones.
 - The server only returns symbols for a file after `textDocument/didOpen`, as VS Code sends. Tests must open a file before asking about it.
-- Some changes still need checking in VS Code: run them with F5 against a Ruby project.
+- End-to-end tests (`test/e2e/`, `npm run test:e2e`, needs Docker and a display) launch a real VS Code with the extension, using `@vscode/test-electron`, on the fixture project:
+  - activation, the status bar reaching Running, document symbols through VS Code, the Restart command, and recovery after the container is killed
+  - `VSCODE_TEST_VERSION` picks the version. The default is 1.82.0, the minimum, and CI runs 1.82.0 and `stable` under `xvfb-run` in the Integration workflow.
+  - The suite runs inside the extension host with Mocha 10 (`mocha-vscode-host`), because VS Code 1.82 runs extensions on Node 18 and Mocha 12 needs Node 20.19+.
+  - `activate()` returns a small `TestApi` (status text) only for these tests.
+  - The launcher clears `ELECTRON_RUN_AS_NODE`. VS Code's own terminal sets it, and it would make the test VS Code start as plain Node.
+- Some changes still need checking by hand in VS Code: run them with F5 against a Ruby project.

@@ -27,6 +27,10 @@ export class StatusBar implements vscode.Disposable {
     this.item.show();
   }
 
+  get text(): string {
+    return this.item.text;
+  }
+
   show(label: 'Waiting for Docker' | 'Starting' | 'Running' | 'Stopped') {
     this.item.text = `Ruby LSP: ${label}`;
   }

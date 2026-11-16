@@ -47,3 +47,32 @@ jobs:
 
       - name: Integration tests
         run: yarn test:integration
+
+  e2e:
+    name: End-to-end tests (VS Code ${{ matrix.vscode }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # The minimum in package.json, and the current release.
+        vscode: ["1.82.0", "stable"]
+    env:
+      RLS_TEST_IMAGE: ${{ github.event.inputs.image || 'kwerle/ruby_language_server' }}
+      VSCODE_TEST_VERSION: ${{ matrix.vscode }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: yarn
+
+      - name: Install
+        run: yarn install --frozen-lockfile
+
+      - name: Pull the server image
+        run: docker pull "$RLS_TEST_IMAGE"
+
+      - name: End-to-end tests
+        run: xvfb-run -a yarn test:e2e
