@@ -11,6 +11,8 @@
 
 ## Requirements
 
+VS Code 1.82 or later.
+
 You must have [docker](https://hub.docker.com/search/?type=edition&offering=community) installed (and running).  I hear you asking why.  Because I don't install a development environment any more - just docker.  And it takes care of all the requirements, consistency, etc.  No platform issues.  No library issues (other than what is brought with).  For example this requires sqlite with a plugin installed.  Who does that?  Docker.
 
 ## Status

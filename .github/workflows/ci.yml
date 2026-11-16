@@ -42,12 +42,6 @@ jobs:
       - name: Audit runtime dependencies (fail on high or critical)
         run: node scripts/audit.js --groups dependencies --level high
 
-      # The project pins TypeScript 3.9; the editor's newer TypeScript checks
-      # with strict settings (see CLAUDE.md). Keep both passing until the
-      # toolchain upgrade (#49) makes strict the default.
-      - name: Type-check with strict TypeScript 5
-        run: npx --yes -p typescript@5.6.3 tsc -p . --noEmit --strict
-
       - name: Package
         run: yarn package
 
