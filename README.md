@@ -17,6 +17,12 @@ You must have [docker](https://hub.docker.com/search/?type=edition&offering=comm
 
 I use this every day.  If Docker isn't running yet, the extension waits for it, and it brings the server back if Docker restarts.  The status bar shows the server's state; click it (or run **Ruby Language Server: Restart**) to restart the server.
 
+## Server versions
+
+The extension runs the server image's `latest` tag, so server fixes reach you without an extension update. The server stays backward compatible with the protocol this extension uses; a breaking change would come with a new major version and advance notice.
+
+The **Ruby Language Server** output shows which server version is running. If your local image is older than this extension needs (for example, when it couldn't be updated while offline), you'll see a warning: run `docker pull kwerle/ruby_language_server`, then **Ruby Language Server: Restart**.
+
 ## Credit
 
 This plugin started as a copy of https://github.com/mtsmfm/vscode-ruby-lsc .  Thanks to Fumiaki MATSUSHIMA for the work.  He deserves none of the blame.
