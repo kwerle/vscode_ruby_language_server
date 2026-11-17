@@ -23,9 +23,9 @@ jobs:
     # A hung test (for example, a retry loop that never ends) fails fast instead of running for hours.
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           # Matches the build image (Dockerfile).
           node-version: 24
@@ -54,7 +54,7 @@ jobs:
         run: node scripts/check-package.js
 
       - name: Upload the .vsix
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: vsix
           path: "*.vsix"
